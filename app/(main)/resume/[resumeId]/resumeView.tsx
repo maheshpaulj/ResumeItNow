@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Edit, Loader2, Save, X, MoveUp, MoveDown } from 'lucide-react';
+import { Download, Edit, Loader2, Save, X, MoveUp, MoveDown, Eye, EyeOff } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ResumeData } from './types';
@@ -33,6 +33,8 @@ import {
 import { DragDropContext, Droppable, Draggable, DraggableProvided, DroppableProvided } from 'react-beautiful-dnd';
 import { motion } from 'framer-motion';
 import debounce from 'lodash/debounce';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // Template components mapping
 const TEMPLATES = {
@@ -76,6 +78,7 @@ export default function ResumeView({
     accentColor?: string;
     fontFamily?: string;
     sectionOrder?: string[];
+    showIcons?: boolean;
   };
   resumeId: string;
 }) {
@@ -91,6 +94,7 @@ export default function ResumeView({
   );
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [tempSectionOrder, setTempSectionOrder] = useState<string[]>(sectionOrder);
+  const [showIcons, setShowIcons] = useState(initialResumeData.showIcons ?? true);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -109,6 +113,7 @@ export default function ResumeView({
         accentColor: accentColor,
         fontFamily: fontFamily,
         sectionOrder: JSON.stringify(sectionOrder),
+        showIcons: showIcons.toString(),
       }).toString();
 
       const response = await fetch(`/api/pdf?${queryParams}`, {
@@ -168,6 +173,7 @@ export default function ResumeView({
         accentColor,
         fontFamily,
         sectionOrder,
+        showIcons,
       });
       await updateDoc(resumeRef, flattenedData);
       localStorage.setItem('resumeitnow_template', selectedTemplate);
@@ -365,14 +371,26 @@ export default function ResumeView({
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="icon-toggle" 
+                    checked={showIcons}
+                    onCheckedChange={setShowIcons}
+                  />
+                  <Label htmlFor="icon-toggle" className="flex items-center gap-2">
+                    {showIcons ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    Show Icons
+                  </Label>
+                </div>
+
                 <Button
                   variant="outline"
                   onClick={() => setIsReorderModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto"
                 >
                   Rearrange Sections
                 </Button>
-              </div>
+              </div>              
             )}
           </div>
         </CardContent>
@@ -388,6 +406,7 @@ export default function ResumeView({
             accentColor={accentColor}
             fontFamily={fontFamily}
             sectionOrder={sectionOrder}
+            showIcons={showIcons}
           />
         </div>
       </div>
@@ -412,8 +431,8 @@ export default function ResumeView({
                         <motion.div
                           {...provided.draggableProps}
                           ref={provided.innerRef}
-                          className={`flex items-center justify-between p-2 bg-gray-100 rounded ${
-                            snapshot.isDragging ? 'shadow-lg bg-gray-200' : ''
+                          className={`flex items-center justify-between p-2 border border-border border-gray-300 rounded shadow ${
+                            snapshot.isDragging ? 'shadow-lg border-gray-400' : ''
                           }`}
                           layout
                           transition={{ duration: 0.2 }}
@@ -469,12 +488,9 @@ export default function ResumeView({
       <style jsx global>{`
         @media print {
           @page {
-            margin: 0.5cm;
             size: A4;
           }
           // /* Hide everything except #resume-content */
-          // body > *:not(#resume-content),
-          // body > div > *:not(#resume-content),
           nav,
           footer {
             display: none !important;

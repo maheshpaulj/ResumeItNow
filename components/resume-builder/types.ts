@@ -5,6 +5,7 @@ export type FormValues = {
       phone: string;
       linkedin?: string;
       github?: string;
+      website?: string;
       location?: string;
     };
     objective?: string;

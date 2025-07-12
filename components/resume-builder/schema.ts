@@ -7,6 +7,7 @@ export const personalInfoSchema = z.object({
     phone: z.string().min(10, "Phone number must have at least 10 digits"),
     linkedin: z.string().optional().or(z.string().url("Invalid LinkedIn URL")),
     github: z.string().optional().or(z.string().url("Invalid GitHub/Portfolio URL")),
+    website: z.string().optional().or(z.string().url("Invalid Website URL")),
     location: z.string().optional(),
   })
 });

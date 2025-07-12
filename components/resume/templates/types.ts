@@ -4,6 +4,7 @@ export interface PersonalDetails {
     phone: string;
     linkedin: string;
     github: string;
+    website: string;
     location: string;
   }
   
@@ -68,6 +69,7 @@ export interface PersonalDetails {
     accentColor?: string;
     fontFamily?: string;
     sectionOrder?: string[];
+    showIcons?: boolean;
   }
 
 export interface EditableTextProps {

@@ -173,7 +173,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         </div>
 
         <Tabs defaultValue="edit" onValueChange={setCurrentTab}>
-          <div className="flex justify-between">
+          <div className="flex justify-between" style={{fontFamily: "Montserrat, sans-serif"}}>
             <TabsList className="mb-2">
               <TabsTrigger value="edit" className="flex items-center gap-1">
                 <Edit className="h-4 w-4" />

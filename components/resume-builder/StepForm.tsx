@@ -95,6 +95,7 @@ export default function StepForm() {
         phone: "",
         linkedin: "",
         github: "",
+        website: "",
         location: ""
       },
       objective: "",

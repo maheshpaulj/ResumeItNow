@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import type { TemplateProps } from './types';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, School, Building } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, Building, GraduationCap, Globe } from 'lucide-react';
 import { lightenColor } from '@/lib/utils';
 
 export function ModernTemplate({
@@ -21,10 +21,12 @@ export function ModernTemplate({
     'certifications',
     'languages',
   ],
+  showIcons
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
+  showIcons?: boolean;
 }) {
   // Memoize derived colors to avoid recalculation
   const colors = useMemo(() => ({
@@ -188,7 +190,7 @@ export function ModernTemplate({
         <div className="text-left text-sm space-x-4" style={{ color: colors.tertiary }}>
           {resumeData.personalDetails.email && (
             <span className="inline-flex items-center gap-1">
-              <Mail className="w-4 h-4" style={{ color: colors.tertiary }} />
+              {showIcons && <Mail className="w-4 h-4" style={{ color: colors.tertiary }} />}
               {renderInput({
                 value: resumeData.personalDetails.email,
                 onChange: (value) => updateField('personalDetails', null, 'email', value),
@@ -201,7 +203,7 @@ export function ModernTemplate({
           )}
           {resumeData.personalDetails.phone && (
             <span className="inline-flex items-center gap-1">
-              <Phone className="w-4 h-4" style={{ color: colors.tertiary }} />
+              {showIcons && <Phone className="w-4 h-4" style={{ color: colors.tertiary }} />}
               {renderInput({
                 value: resumeData.personalDetails.phone,
                 onChange: (value) => updateField('personalDetails', null, 'phone', value),
@@ -214,7 +216,7 @@ export function ModernTemplate({
           )}
           {resumeData.personalDetails.location && (
             <span className="inline-flex items-center gap-1">
-              <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />
+              {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />}
               {renderInput({
                 value: resumeData.personalDetails.location,
                 onChange: (value) => updateField('personalDetails', null, 'location', value),
@@ -228,7 +230,7 @@ export function ModernTemplate({
         <div className="text-left mt-2 space-x-4">
           {resumeData.personalDetails.linkedin && (
             <span className="inline-flex items-center gap-1">
-              <Linkedin className="w-4 h-4" style={{ color: colors.tertiary }} />
+              {showIcons && <Linkedin className="w-4 h-4" style={{ color: colors.tertiary }} />}
               {renderInput({
                 value: resumeData.personalDetails.linkedin,
                 onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
@@ -241,7 +243,7 @@ export function ModernTemplate({
           )}
           {resumeData.personalDetails.github && (
             <span className="inline-flex items-center gap-1">
-              <Github className="w-4 h-4" style={{ color: colors.tertiary }} />
+              {showIcons && <Github className="w-4 h-4" style={{ color: colors.tertiary }} />}
               {renderInput({
                 value: resumeData.personalDetails.github,
                 onChange: (value) => updateField('personalDetails', null, 'github', value),
@@ -249,6 +251,19 @@ export function ModernTemplate({
                 type: 'link',
                 inlineStyle: { color: colors.tertiary },
                 ariaLabel: 'GitHub profile',
+              })}
+            </span>
+          )}
+          {resumeData.personalDetails.website && (
+            <span className="inline-flex items-center gap-1">
+              {showIcons && <Globe className="w-4 h-4" style={{ color: colors.tertiary }} />}
+              {renderInput({
+                value: resumeData.personalDetails.website,
+                onChange: (value) => updateField('personalDetails', null, 'website', value),
+                className: 'inline-block text-sm',
+                type: 'link',
+                inlineStyle: { color: colors.tertiary },
+                ariaLabel: 'Website',
               })}
             </span>
           )}
@@ -312,7 +327,7 @@ export function ModernTemplate({
                   <div className="flex flex-col">
                     {experience.location ? (
                       <div className="flex items-center gap-1 mb-1">
-                        <Building2 className="w-4 h-4" style={{ color: colors.tertiary }} />
+                        {showIcons && <Building2 className="w-4 h-4" style={{ color: colors.tertiary }} />}
                         <div className="flex items-center gap-1">
                           {renderInput({
                             value: experience.companyName,
@@ -322,7 +337,7 @@ export function ModernTemplate({
                             ariaLabel: 'Company name',
                           })}
                           <div className="flex items-center">
-                            <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />
+                            {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />}
                             {renderInput({
                               value: experience.location,
                               onChange: (value) => updateField('workExperience', index, 'location', value),
@@ -335,7 +350,7 @@ export function ModernTemplate({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 mb-1">
-                        <Building2 className="w-4 h-4" style={{ color: colors.tertiary }} />
+                        {showIcons && <Building2 className="w-4 h-4" style={{ color: colors.tertiary }} />}
                         {renderInput({
                           value: experience.companyName,
                           onChange: (value) => updateField('workExperience', index, 'companyName', value),
@@ -380,7 +395,7 @@ export function ModernTemplate({
                     })}
                     {project.link && (
                       <div className="flex items-center gap-1">
-                        <Link2 className="w-4 h-4" style={{ color: colors.tertiary }} />
+                        {showIcons && <Link2 className="w-4 h-4" style={{ color: colors.tertiary }} />}
                         {renderInput({
                           value: project.link,
                           onChange: (value) => updateField('projects', index, 'link', value),
@@ -435,7 +450,7 @@ export function ModernTemplate({
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <School className="w-4 h-4" style={{ color: colors.tertiary }} />
+                    {showIcons && <GraduationCap className="w-4 h-4" style={{ color: colors.tertiary }} />}
                     <div className="flex items-center gap-1">
                       {renderInput({
                         value: edu.institution,
@@ -446,7 +461,7 @@ export function ModernTemplate({
                       })}
                       {edu.location && (
                         <div className="flex items-center">
-                          <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />
+                          {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.tertiary }} />}
                           {renderInput({
                             value: edu.location,
                             onChange: (value) => updateField('education', index, 'location', value),
@@ -525,7 +540,7 @@ export function ModernTemplate({
                       value: cert.certificationName,
                       onChange: (value) => updateField('certifications', index, 'certificationName', value),
                       className: 'font-medium text-sm',
-                      inlineStyle: { color: colors.subheading },
+                      inlineStyle: { color: colors.tertiary },
                       ariaLabel: 'Certification name',
                     })}
                     <div className="flex items-center gap-1">
@@ -539,12 +554,12 @@ export function ModernTemplate({
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Building className="w-4 h-4" style={{ color: colors.tertiary }} />
+                    {showIcons && <Building className="w-4 h-4" style={{ color: colors.sectionTitle }} />}
                     {renderInput({
                       value: cert.issuingOrganization,
                       onChange: (value) => updateField('certifications', index, 'issuingOrganization', value),
                       className: 'text-sm',
-                      inlineStyle: { color: colors.tertiary },
+                      inlineStyle: { color: colors.sectionTitle },
                       ariaLabel: 'Issuing organization',
                     })}
                   </div>

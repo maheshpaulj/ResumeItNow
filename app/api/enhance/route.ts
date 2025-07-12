@@ -26,13 +26,13 @@ export async function POST(req: Request) {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: "meta-llama/llama-3.1-8b-instruct:free",
+        model: "openrouter/cypher-alpha:free",
         messages: [{
           role: "system",
           content: "You are a professional resume writer. Enhance the given description to be more impactful and professional while maintaining truthfulness."
         }, {
           role: "user",
-          content: `Please enhance this description to be more professional and impactful: ${description} . important: only use bold(**) and bullet point(-) markdown only where ever necessary and dont use phrases like "here are..." or anything, just give the straight message. strictly under 450 characters.`
+          content: `Please enhance this description to be more professional and impactful: ${description} . important: must only use bold(**) and bullet point(-) markdown only where ever necessary and dont use phrases like "here are..." or anything, just give the straight message. strictly under 450 characters.`
         }]
       })
     })

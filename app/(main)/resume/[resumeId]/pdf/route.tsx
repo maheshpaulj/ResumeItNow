@@ -12,6 +12,7 @@ interface PersonalDetails {
     phone: string;
     linkedin: string;
     github: string;
+    website: string;
     location: string;
   }
 

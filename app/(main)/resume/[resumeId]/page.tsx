@@ -11,6 +11,7 @@ interface PersonalDetails {
   phone: string;
   linkedin: string;
   github: string;
+  website: string;
   location: string;
 }
 
@@ -75,6 +76,7 @@ interface ResumeData {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
+  showIcons?: boolean;
 }
 
 async function getResumeData(resumeId: string): Promise<ResumeData | null> {

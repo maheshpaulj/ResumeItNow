@@ -4,6 +4,7 @@ export interface PersonalDetails {
   phone: string;
   linkedin: string;
   github: string;
+  website: string;
   location: string;
 }
 
@@ -68,4 +69,5 @@ export interface ResumeData {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
+  showIcons?: boolean;
 }

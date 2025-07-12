@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import type { TemplateProps } from './types';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, Building } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
 
 export function ProfessionalTemplate({
   resumeData,
@@ -21,10 +21,12 @@ export function ProfessionalTemplate({
     'languages',
     'customSections',
   ],
+  showIcons,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
+  showIcons?: boolean;
 }) {
   // Memoize accentColor directly
   const colors = useMemo(() => ({
@@ -188,7 +190,7 @@ export function ProfessionalTemplate({
           <div className="text-right text-sm">
             {resumeData.personalDetails.email && (
               <div className="flex items-center gap-1 justify-end">
-                <Mail className="w-4 h-4" style={{ color: colors.accent }} />
+                {showIcons && <Mail className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.email,
                   onChange: (value) => updateField('personalDetails', null, 'email', value),
@@ -201,7 +203,7 @@ export function ProfessionalTemplate({
             )}
             {resumeData.personalDetails.phone && (
               <div className="flex items-center gap-1 justify-end">
-                <Phone className="w-4 h-4" style={{ color: colors.accent }} />
+                {showIcons && <Phone className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.phone,
                   onChange: (value) => updateField('personalDetails', null, 'phone', value),
@@ -214,7 +216,7 @@ export function ProfessionalTemplate({
             )}
             {resumeData.personalDetails.location && (
               <div className="flex items-center gap-1 justify-end">
-                <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+                {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.location,
                   onChange: (value) => updateField('personalDetails', null, 'location', value),
@@ -226,7 +228,7 @@ export function ProfessionalTemplate({
             )}
             {resumeData.personalDetails.linkedin && (
               <div className="flex items-center gap-1 justify-end">
-                <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />
+                {showIcons && <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.linkedin,
                   onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
@@ -239,7 +241,7 @@ export function ProfessionalTemplate({
             )}
             {resumeData.personalDetails.github && (
               <div className="flex items-center gap-1 justify-end">
-                <Github className="w-4 h-4" style={{ color: colors.accent }} />
+                {showIcons && <Github className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.github,
                   onChange: (value) => updateField('personalDetails', null, 'github', value),
@@ -247,6 +249,19 @@ export function ProfessionalTemplate({
                   type: 'link',
                   textColor: 'text-gray-600',
                   ariaLabel: 'GitHub profile',
+                })}
+              </div>
+            )}
+            {resumeData.personalDetails.website && (
+              <div className="flex items-center gap-1 justify-end">
+                {showIcons && <Globe className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.website,
+                  onChange: (value) => updateField('personalDetails', null, 'website', value),
+                  className: 'inline-block text-sm',
+                  type: 'link',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'Website',
                 })}
               </div>
             )}
@@ -310,7 +325,7 @@ export function ProfessionalTemplate({
                   <div className="flex flex-col">
                     {experience.location ? (
                       <div className="flex items-center gap-1 mb-1">
-                        <Building2 className="w-4 h-4" style={{ color: colors.accent }} />
+                        {showIcons && <Building2 className="w-4 h-4" style={{ color: colors.accent }} />}
                         <div className="flex items-center gap-1">
                           {renderInput({
                             value: experience.companyName,
@@ -320,7 +335,7 @@ export function ProfessionalTemplate({
                             ariaLabel: 'Company name',
                           })}
                           <div className="flex items-center">
-                            <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+                            {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                             {renderInput({
                               value: experience.location,
                               onChange: (value) => updateField('workExperience', index, 'location', value),
@@ -333,7 +348,7 @@ export function ProfessionalTemplate({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 mb-1">
-                        <Building2 className="w-4 h-4" style={{ color: colors.accent }} />
+                        {showIcons && <Building2 className="w-4 h-4" style={{ color: colors.accent }} />}
                         {renderInput({
                           value: experience.companyName,
                           onChange: (value) => updateField('workExperience', index, 'companyName', value),
@@ -377,7 +392,7 @@ export function ProfessionalTemplate({
                     })}
                     {project.link && (
                       <div className="flex items-center gap-1">
-                        <Link2 className="w-4 h-4" style={{ color: colors.accent }} />
+                        {showIcons && <Link2 className="w-4 h-4" style={{ color: colors.accent }} />}
                         {renderInput({
                           value: project.link,
                           onChange: (value) => updateField('projects', index, 'link', value),
@@ -432,7 +447,7 @@ export function ProfessionalTemplate({
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Building className="w-4 h-4" style={{ color: colors.accent }} />
+                    {showIcons && <GraduationCap className="w-4 h-4" style={{ color: colors.accent }} />}
                     <div className="flex items-center gap-1">
                       {renderInput({
                         value: edu.institution,
@@ -443,7 +458,7 @@ export function ProfessionalTemplate({
                       })}
                       {edu.location && (
                         <div className="flex items-center">
-                          <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+                          {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                           {renderInput({
                             value: edu.location,
                             onChange: (value) => updateField('education', index, 'location', value),

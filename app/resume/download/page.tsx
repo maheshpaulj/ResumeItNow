@@ -22,6 +22,7 @@ const DownloadPage = () => {
   const [accentColor, setAccentColor] = useState<string | undefined>(undefined);
   const [fontFamily, setFontFamily] = useState<string | undefined>(undefined);
   const [sectionOrder, setSectionOrder] = useState<string[] | undefined>(undefined);
+  const [showIcons, setShowIcons] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const data = searchParams.get('data');
@@ -29,6 +30,7 @@ const DownloadPage = () => {
     const color = searchParams.get('accentColor');
     const font = searchParams.get('fontFamily');
     const order = searchParams.get('sectionOrder');
+    const showIcons = searchParams.get('showIcons');
 
     if (Array.isArray(data) || Array.isArray(template) || Array.isArray(color) || Array.isArray(font) || Array.isArray(order)) {
       console.error('Invalid query parameters');
@@ -46,6 +48,7 @@ const DownloadPage = () => {
         } else {
           setSectionOrder(undefined); // Use undefined to fall back to template default
         }
+        setShowIcons(showIcons || undefined); // Use undefined to fall back to template default
       } catch (error) {
         console.error('Error parsing query parameters:', error);
       }
@@ -68,6 +71,7 @@ const DownloadPage = () => {
           accentColor={accentColor}    // Pass accentColor from query params
           fontFamily={fontFamily}      // Pass fontFamily from query params
           sectionOrder={sectionOrder}  // Pass sectionOrder from query params
+          showIcons={showIcons == 'true' ? true : false}
         />
       </div>
     </div>

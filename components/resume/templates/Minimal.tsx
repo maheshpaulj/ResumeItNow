@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import type { TemplateProps } from './types';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, Building } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
 
 export function MinimalTemplate({
   resumeData,
@@ -21,10 +21,12 @@ export function MinimalTemplate({
     'languages',
     'customSections',
   ],
+  showIcons,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
+  showIcons?: boolean;
 }) {
   // Memoize accentColor to avoid recalculation
   const colors = useMemo(() => ({
@@ -185,7 +187,7 @@ export function MinimalTemplate({
         <div className="text-center text-sm space-x-3">
           {resumeData.personalDetails.email && (
             <span className="inline-flex items-center gap-1">
-              <Mail className="w-4 h-4" style={{ color: colors.accent }} />
+              {showIcons && <Mail className="w-4 h-4" style={{ color: colors.accent }} />}
               {renderInput({
                 value: resumeData.personalDetails.email,
                 onChange: (value) => updateField('personalDetails', null, 'email', value),
@@ -198,7 +200,7 @@ export function MinimalTemplate({
           )}
           {resumeData.personalDetails.phone && (
             <span className="inline-flex items-center gap-1">
-              <Phone className="w-4 h-4" style={{ color: colors.accent }} />
+              {showIcons && <Phone className="w-4 h-4" style={{ color: colors.accent }} />}
               {renderInput({
                 value: resumeData.personalDetails.phone,
                 onChange: (value) => updateField('personalDetails', null, 'phone', value),
@@ -211,7 +213,7 @@ export function MinimalTemplate({
           )}
           {resumeData.personalDetails.location && (
             <span className="inline-flex items-center gap-1">
-              <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+              {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
               {renderInput({
                 value: resumeData.personalDetails.location,
                 onChange: (value) => updateField('personalDetails', null, 'location', value),
@@ -225,7 +227,7 @@ export function MinimalTemplate({
         <div className="text-center mt-1 space-x-3">
           {resumeData.personalDetails.linkedin && (
             <span className="inline-flex items-center gap-1">
-              <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />
+              {showIcons && <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />}
               {renderInput({
                 value: resumeData.personalDetails.linkedin,
                 onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
@@ -238,7 +240,7 @@ export function MinimalTemplate({
           )}
           {resumeData.personalDetails.github && (
             <span className="inline-flex items-center gap-1">
-              <Github className="w-4 h-4" style={{ color: colors.accent }} />
+              {showIcons && <Github className="w-4 h-4" style={{ color: colors.accent }} />}
               {renderInput({
                 value: resumeData.personalDetails.github,
                 onChange: (value) => updateField('personalDetails', null, 'github', value),
@@ -249,12 +251,25 @@ export function MinimalTemplate({
               })}
             </span>
           )}
+          {resumeData.personalDetails.website && (
+            <span className="inline-flex items-center gap-1">
+              {showIcons && <Globe className="w-4 h-4" style={{ color: colors.accent }} />}
+              {renderInput({
+                value: resumeData.personalDetails.website,
+                onChange: (value) => updateField('personalDetails', null, 'website', value),
+                className: 'inline-block text-sm',
+                type: 'link',
+                textColor: 'text-gray-600',
+                ariaLabel: 'Website',
+              })}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Render sections based on sectionOrder */}
       {sectionOrder.map((section) => (
-        <div key={section} className="mb-4 break-inside-avoid">
+        <div key={section} className="mb-4">
           {section === 'objective' && hasContent(resumeData.objective) && (
             <div>
               <SectionHeader title="Professional Summary" />
@@ -316,7 +331,7 @@ export function MinimalTemplate({
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1">
                         <div className="flex items-center gap-1">
-                          <Building2 className="w-4 h-4" style={{ color: colors.accent }} />
+                          {showIcons && <Building2 className="w-4 h-4" style={{ color: colors.accent }} />}
                           {renderInput({
                             value: experience.companyName,
                             onChange: (value) =>
@@ -328,7 +343,7 @@ export function MinimalTemplate({
                         </div>
                         {experience.location && (
                           <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+                            {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                             {renderInput({
                               value: experience.location,
                               onChange: (value) =>
@@ -382,13 +397,14 @@ export function MinimalTemplate({
                       })}
                       {project.link && (
                         <div className="flex items-center gap-1">
-                          <Link2 className="w-4 h-4" style={{ color: colors.accent }} />
+                          {showIcons && <Link2 className="w-4 h-4" style={{ color: colors.accent }} />}
                           {renderInput({
                             value: project.link,
                             onChange: (value) => updateField('projects', idx, 'link', value),
                             className: 'text-sm',
                             type: 'link',
                             textColor: 'text-gray-600',
+                            inlineStyle: { color: colors.accent },
                             ariaLabel: 'Project link',
                           })}
                         </div>
@@ -442,7 +458,7 @@ export function MinimalTemplate({
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Building className="w-4 h-4" style={{ color: colors.accent }} />
+                      {showIcons && <GraduationCap className="w-4 h-4" style={{ color: colors.accent }} />}
                       <div className="flex items-center gap-1">
                         {renderInput({
                           value: edu.institution,
@@ -454,7 +470,7 @@ export function MinimalTemplate({
                         })}
                         {edu.location && (
                           <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" style={{ color: colors.accent }} />
+                            {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                             {renderInput({
                               value: edu.location,
                               onChange: (value) =>
@@ -468,7 +484,7 @@ export function MinimalTemplate({
                       </div>
                     </div>
                     {edu.description && (
-                      <div className="text-sm ml-5">
+                      <div className="text-sm">
                         {renderInput({
                           value: edu.description,
                           onChange: (value) =>

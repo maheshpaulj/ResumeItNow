@@ -40,10 +40,17 @@ interface PersonalInfoStepProps {
         </div>
   
         <div className="space-y-2">
-          <Label>GitHub/Portfolio URL</Label>
+          <Label>GitHub URL</Label>
           <Input {...register("personalDetails.github")} className="w-full" />
           {errors.personalDetails?.github && 
             <p className="text-destructive text-sm">{errors.personalDetails.github.message}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Website Portfolio URL</Label>
+          <Input {...register("personalDetails.website")} className="w-full" />
+          {errors.personalDetails?.website && 
+            <p className="text-destructive text-sm">{errors.personalDetails.website.message}</p>}
         </div>
   
         <div className="space-y-2">
