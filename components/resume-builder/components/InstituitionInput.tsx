@@ -35,53 +35,55 @@ export const InstituitionInputComponent: React.FC<InstituitionInputProps> = ({ r
         <div className="space-y-2">
             <Label>Institution</Label>
             <div className="flex gap-2">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full justify-between"
-                    >
-                        {institution ? institution : (defaultInstitution || "Select Institution")}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                    <Command>
-                        <CommandInput placeholder="Search for institution..." />
-                        <CommandEmpty>No institution found.</CommandEmpty>
-                        <CommandGroup>
-                            {
-                                universitiesList.map((university) => (
-                                    <CommandItem
-                                        key={university.name}
-                                        onSelect={(value) => {
-                                            setInstitution(value);
-                                            setOpen(false);
-                                            register(`education.${index}.institution`).onChange({
-                                                target: { value: value, name: `education.${index}.institution` }
-                                            });
-                                            register(`education.${index}.location`).onChange({
-                                                target: { value: university.country, name: `education.${index}.location` }
-                                            });
-                                        }}
-                                    >
-                                        {university.name} ({university.country})
-                                        <Check
-                                            className={cn(
-                                                "ml-auto h-4 w-4",
-                                                institution === university.name ? "opacity-100" : "opacity-0"
-                                            )}
-                                        />
-                                    </CommandItem>
-                                ))
-                            }
-                        </CommandGroup>
-                    </Command>
-                </PopoverContent>
-            </Popover>
+                <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between"
+                        >
+                            {institution ? institution : (defaultInstitution || "Select Institution")}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                        <Command>
+                            <CommandInput placeholder="Search for institution..." />
+                            <CommandEmpty>No institution found.</CommandEmpty>
+                            <CommandGroup>
+                                {
+                                    universitiesList.map((university) => (
+                                        <CommandItem
+                                            key={university.name}
+                                            onSelect={(value) => {
+                                                setInstitution(value);
+                                                setOpen(false);
+                                                register(`education.${index}.institution`).onChange({
+                                                    target: { value: value, name: `education.${index}.institution` }
+                                                });
+                                                register(`education.${index}.location`).onChange({
+                                                    target: { value: university.country, name: `education.${index}.location` }
+                                                });
+                                            }}
+                                        >
+                                            {university.name} ({university.country})
+                                            <Check
+                                                className={cn(
+                                                    "ml-auto h-4 w-4",
+                                                    institution === university.name ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                        </CommandItem>
+                                    ))
+                                }
+                            </CommandGroup>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
+            {errors.education?.[index]?.institution &&
+                <p className="text-destructive text-sm">{errors.education[index]?.institution?.message}</p>}
         </div>
     )
 }
