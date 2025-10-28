@@ -26,6 +26,8 @@ export const InstituitionInputComponent = ({ register, errors, index }: Institut
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [institution, setInstitution] = useState<string | null>(null);
+    const storedData = localStorage.getItem("resumeitnow_form_data");
+    const defaultInstitution = storedData ? JSON.parse(storedData)?.formData?.education?.[index]?.institution || "" : "";
 
     const debouncedQuery = useDebounce(query, 300);
 
@@ -57,7 +59,7 @@ export const InstituitionInputComponent = ({ register, errors, index }: Institut
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
-                        {institution || "Select Institution"}
+                        {institution ? institution : (defaultInstitution || "Select Institution")}
                         <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                     </Button>
                 </PopoverTrigger>
