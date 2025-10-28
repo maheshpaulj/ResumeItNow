@@ -21,7 +21,7 @@ interface Institution {
     country: string;
 }
 
-export const InstituitionInputComponent = ({ register, setValue, errors, index }: InstitutionInputProps) => {
+export const InstituitionInputComponent = ({ setValue, errors, index }: InstitutionInputProps) => {
     const [open, setOpen] = useState(false);
     const [results, setResults] = useState<Institution[]>([]);
     const [query, setQuery] = useState("");
