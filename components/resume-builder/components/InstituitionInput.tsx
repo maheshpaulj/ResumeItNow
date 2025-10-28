@@ -6,11 +6,12 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
-import { FieldErrors, UseFormRegister } from "react-hook-form";
+import { FieldErrors, UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { FormValues } from "../types";
 
 interface InstitutionInputProps {
     register: UseFormRegister<FormValues>
+    setValue: UseFormSetValue<FormValues>
     errors: FieldErrors<FormValues>
     index: number
 }
@@ -20,7 +21,7 @@ interface Institution {
     country: string;
 }
 
-export const InstituitionInputComponent = ({ register, errors, index }: InstitutionInputProps) => {
+export const InstituitionInputComponent = ({ register, setValue, errors, index }: InstitutionInputProps) => {
     const [open, setOpen] = useState(false);
     const [results, setResults] = useState<Institution[]>([]);
     const [query, setQuery] = useState("");
@@ -82,12 +83,8 @@ export const InstituitionInputComponent = ({ register, errors, index }: Institut
                                         onSelect={() => {
                                             setInstitution(u.name);
                                             setOpen(false);
-                                            register(`education.${index}.institution`).onChange({
-                                                target: { value: u.name, name: `education.${index}.institution` },
-                                            });
-                                            register(`education.${index}.location`).onChange({
-                                                target: { value: u.country, name: `education.${index}.location` },
-                                            });
+                                            setValue(`education.${index}.institution`, u.name, { shouldValidate: true });
+                                            setValue(`education.${index}.location`, u.country, { shouldValidate: true });
                                         }}
                                     >
                                         {u.name} ({u.country})

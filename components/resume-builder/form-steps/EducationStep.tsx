@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { UseFormRegister, FieldErrors, UseFieldArrayReturn, Controller, useForm } from "react-hook-form";
+import { UseFormRegister, FieldErrors, UseFieldArrayReturn, Controller, Control, UseFormSetValue } from "react-hook-form";
 import DatePickerComponent from "../components/DatePicker";
 import { FormValues } from "../types";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { InstituitionInputComponent } from "@/components/resume-builder/componen
 // EducationStep Component
 interface EducationStepProps {
   register: UseFormRegister<FormValues>;
+  control: Control<FormValues>;
+  setValue: UseFormSetValue<FormValues>;
   errors: FieldErrors<FormValues>;
   fields: UseFieldArrayReturn<FormValues, "education">["fields"];
   append: UseFieldArrayReturn<FormValues, "education">["append"];
@@ -19,6 +21,8 @@ interface EducationStepProps {
 
 export const EducationStep: React.FC<EducationStepProps> = ({
   register,
+  control,
+  setValue,
   errors,
   fields,
   append,
@@ -48,11 +52,21 @@ export const EducationStep: React.FC<EducationStepProps> = ({
                 <p className="text-destructive text-sm">{errors.education[index]?.degree?.message}</p>}
             </div>
 
-            <InstituitionInputComponent register={register} errors={errors} index={index} />
+            <InstituitionInputComponent register={register} setValue={setValue} errors={errors} index={index} />
 
             <div className="space-y-2">
               <Label>Location</Label>
-              <Input {...register(`education.${index}.location`)} />
+              <Controller
+                name={`education.${index}.location`}
+                control={control}
+                defaultValue=""
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="Location will be auto-filled when selecting institution"
+                  />
+                )}
+              />
             </div>
 
             <div className="space-y-2">
