@@ -48,13 +48,6 @@ export const EducationStep: React.FC<EducationStepProps> = ({
                 <p className="text-destructive text-sm">{errors.education[index]?.degree?.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label>Institution</Label>
-              <Input {...register(`education.${index}.institution`)} />
-              {errors.education?.[index]?.institution &&
-                <p className="text-destructive text-sm">{errors.education[index]?.institution?.message}</p>}
-            </div>
-
             <InstituitionInputComponent register={register} errors={errors} index={index} />
 
             <div className="space-y-2">
