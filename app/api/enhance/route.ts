@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: "openrouter/cypher-alpha:free",
+        model: "microsoft/mai-ds-r1:free",
         messages: [{
           role: "system",
           content: "You are a professional resume writer. Enhance the given description to be more impactful and professional while maintaining truthfulness."
