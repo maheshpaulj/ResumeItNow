@@ -46,7 +46,7 @@ async function analyzeWithOpenRouter(resumeText: string, jobDescription: string 
       "X-Title": "ResumeItNow - Free Open Source Resume Builder",
     },
     body: JSON.stringify({
-      model: "microsoft/mai-ds-r1:free",
+      model: "meta-llama/llama-3.3-70b-instruct:free",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     }),
