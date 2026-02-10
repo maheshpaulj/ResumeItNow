@@ -1,10 +1,10 @@
 // route.ts
 import { NextResponse } from 'next/server'
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
-const API_URL = "https://openrouter.ai/api/v1/chat/completions"
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-if (!OPENROUTER_API_KEY) {
+if (!GROQ_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is not defined in environment variables')
 }
 
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
     }
 
     // Only add HTTP-Referer if NEXT_PUBLIC_URL is defined
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: "openai/gpt-oss-120b:free",
+        model: "openai/gpt-oss-120b",
         messages: [{
           role: "system",
           content: "You are a professional resume writer. Enhance the given description to be more impactful and professional while maintaining truthfulness."

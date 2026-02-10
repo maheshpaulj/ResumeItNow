@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Bold, List, Eye, Edit } from "lucide-react"
+import { Loader2, Bold, List, Eye, Edit, RotateCcw } from "lucide-react"
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -15,6 +15,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, showEnhanceButton = true, onTextChange, value, onChange, ...props }, forwardedRef) => {
     const [isEnhancing, setIsEnhancing] = React.useState(false);
     const [currentText, setCurrentText] = React.useState<string>(value as string || '');
+    const [previousText, setPreviousText] = React.useState<string>("");
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [currentTab, setCurrentTab] = React.useState<string>('edit');
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -22,17 +23,37 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     // Update internal state when value prop changes
     React.useEffect(() => {
       setCurrentText(value as string || '');
+      setPreviousText(""); // Reset undo history when value prop changes
     }, [value]);
 
     const { toast } = useToast();
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newText = e.target.value;
+      setPreviousText(currentText);
       setCurrentText(newText);
       
       // Trigger both onTextChange and original onChange
       onTextChange?.(newText);
       onChange?.(e);
+    };
+
+    const handleUndo = () => {
+      const syntheticEvent = {
+        target: { 
+          value: previousText,
+          name: props.name || ''
+        }
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+
+      setCurrentText(previousText);
+      onChange?.(syntheticEvent);
+      onTextChange?.(previousText);
+      
+      toast({
+        title: "Success",
+        description: "Text reverted to previous version",
+      });
     };
 
     const handleEnhance = async () => {
@@ -74,7 +95,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           }
         } as React.ChangeEvent<HTMLTextAreaElement>;
 
-        // Update state
+        // Update state (save previous text for undo)
+        setPreviousText(currentText);
         setCurrentText(newText);
         
         // Trigger onChange to work with react-hook-form
@@ -184,25 +206,40 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                 Preview
               </TabsTrigger>
             </TabsList>
-            {showEnhanceButton && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="bg-purple-400 hover:bg-purple-500 transition hover:scale-105"
-                onClick={handleEnhance}
-                disabled={isEnhancing}
-              >
-                {isEnhancing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enhancing...
-                  </>
-                ) : (
-                  "Enhance with AI"
-                )}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {showEnhanceButton && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="bg-purple-400 hover:bg-purple-500 transition hover:scale-105"
+                  onClick={handleEnhance}
+                  disabled={isEnhancing}
+                >
+                  {isEnhancing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enhancing...
+                    </>
+                  ) : (
+                    "Enhance with AI"
+                  )}
+                </Button>
+              )}
+              {showEnhanceButton && previousText && previousText !== currentText && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="hover:scale-105 transition"
+                  onClick={handleUndo}
+                  disabled={isEnhancing}
+                  title="Undo last change"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <TabsContent value="edit" className="relative">
@@ -228,7 +265,11 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
           <TabsContent value="preview" className="relative w-full">
             <div
-              className="prose min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              className="prose prose-sm min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm overflow-hidden"
+              style={{
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+              }}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(currentText) }}
             />
           </TabsContent>
