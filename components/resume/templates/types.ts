@@ -6,6 +6,7 @@ export interface PersonalDetails {
     github: string;
     website: string;
     location: string;
+    photo?: string;
   }
   
   export interface WorkExperience {
@@ -23,6 +24,7 @@ export interface PersonalDetails {
     location: string;
     startDate: string;
     endDate: string;
+    gpa?: string;
     description: string;
   }
   
@@ -70,6 +72,11 @@ export interface PersonalDetails {
     fontFamily?: string;
     sectionOrder?: string[];
     showIcons?: boolean;
+    showPhoto?: boolean;
+    editorMode?: 'visual' | 'latex';
+    latexContent?: string;
+    margins?: 'normal' | 'narrow';
+    template?: string;
   }
 
 export interface EditableTextProps {

@@ -1,16 +1,23 @@
 'use client'
 import { useSession } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FileText, Mail, User, Trash2 } from 'lucide-react'
+import { FileText, Mail, User, Trash2, Pencil, Check, X, Plus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from "@/components/ui/toaster"
+import { ModernTemplate } from '@/components/resume/templates/Modern'
+import { MinimalTemplate } from '@/components/resume/templates/Minimal'
+import { ProfessionalTemplate } from '@/components/resume/templates/Professional'
+import { CompactTemplate } from '@/components/resume/templates/Compact'
+import { SidebarTemplate } from '@/components/resume/templates/Sidebar'
+import type { ResumeData } from '@/components/resume/templates/types'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +30,93 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+const TEMPLATES = {
+  modern: ModernTemplate,
+  minimal: MinimalTemplate,
+  professional: ProfessionalTemplate,
+  compact: CompactTemplate,
+  sidebar: SidebarTemplate,
+} as const
+
 interface Resume {
   id: string
-  title: string
+  title?: string
   createdAt: string
   updatedAt: string
+  template?: string
+  data: ResumeData & {
+    accentColor?: string
+    fontFamily?: string
+    sectionOrder?: string[]
+    hiddenSections?: string[]
+    showIcons?: boolean
+  }
+}
+
+// A4 page is 794px wide at 96dpi; thumbnails render the real template scaled
+// down to exactly fill the card width.
+const PAGE_WIDTH_PX = 794
+
+function ResumePreview({ resume }: { resume: Resume }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) =>
+      setScale(entries[0].contentRect.width / PAGE_WIDTH_PX)
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const templateKey =
+    resume.template && resume.template in TEMPLATES
+      ? (resume.template as keyof typeof TEMPLATES)
+      : 'modern'
+  const TemplateComponent = TEMPLATES[templateKey]
+  const data = resume.data
+
+  if (!data?.personalDetails) {
+    return (
+      <div className="flex items-center justify-center h-full bg-muted">
+        <FileText className="w-10 h-10 text-muted-foreground opacity-50" />
+      </div>
+    )
+  }
+
+  const visibleOrder = data.sectionOrder?.filter(
+    (s) => !(data.hiddenSections || []).includes(s)
+  )
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden bg-white pointer-events-none select-none"
+    >
+      {scale > 0 && (
+        <div
+          style={{
+            width: PAGE_WIDTH_PX,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
+          aria-hidden
+        >
+          <TemplateComponent
+            resumeData={data}
+            isEditing={false}
+            updateField={() => {}}
+            accentColor={data.accentColor}
+            fontFamily={data.fontFamily}
+            sectionOrder={visibleOrder}
+            showIcons={data.showIcons ?? true}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ProfileSkeleton() {
@@ -46,11 +135,14 @@ export default function Page() {
   const router = useRouter();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
   const { toast } = useToast();
-  const settings = {
-    displayName: window.localStorage.getItem("resumeitnow_name") || session?.user?.name,
-    defaultTemplate: window.localStorage.getItem("resumeitnow_template") || 'modern'
-  };
+
+  useEffect(() => {
+    setDisplayName(window.localStorage.getItem("resumeitnow_name"));
+  }, []);
 
   const deleteResume = async (resumeId: string) => {
     try {
@@ -60,7 +152,6 @@ export default function Page() {
         description: "Resume deleted successfully!",
         duration: 3000,
       });
-      
       setResumes((prevResumes) => prevResumes.filter((resume) => resume.id !== resumeId));
     } catch (error) {
       console.error("Error deleting resume:", error);
@@ -73,18 +164,50 @@ export default function Page() {
     }
   };
 
+  const startRename = (resume: Resume) => {
+    setEditingId(resume.id);
+    setEditingTitle(resume.title || defaultTitle(resume));
+  };
+
+  const saveRename = async (resumeId: string) => {
+    const title = editingTitle.trim();
+    setEditingId(null);
+    if (!title) return;
+    try {
+      await updateDoc(doc(db, `users/${session?.user?.email}/resumes/${resumeId}`), { title });
+      setResumes((prev) =>
+        prev.map((r) => (r.id === resumeId ? { ...r, title } : r))
+      );
+    } catch (error) {
+      console.error("Error renaming resume:", error);
+      toast({
+        title: "Error",
+        description: "Could not rename resume. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+
   useEffect(() => {
     const fetchResumes = async () => {
-      if (!session?.user?.name) return;
+      if (!session?.user?.email) return;
 
       try {
         const resumesRef = collection(db, `users/${session.user.email}/resumes`);
         const resumesSnapshot = await getDocs(resumesRef);
-        
-        const resumeData = resumesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Resume[];
+
+        const resumeData = resumesSnapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            title: data.title,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            template: data.template,
+            data: data as Resume['data'],
+          } as Resume;
+        });
 
         setResumes(resumeData);
       } catch (error) {
@@ -95,7 +218,7 @@ export default function Page() {
     };
 
     fetchResumes();
-  }, [session?.user?.email, session?.user?.name]);
+  }, [session?.user?.email]);
 
   if (status === 'loading') {
     return <ProfileSkeleton />;
@@ -105,6 +228,11 @@ export default function Page() {
     router.push('/signin');
     return null;
   }
+
+  const defaultTitle = (resume: Resume) =>
+    resume.data?.jobTitle ||
+    resume.data?.personalDetails?.fullName ||
+    'Untitled Resume';
 
   return (
     <div className="container min-h-screen mx-auto px-4 py-8">
@@ -118,16 +246,16 @@ export default function Page() {
                 {session.user?.name?.charAt(0) ?? 'U'}
               </AvatarFallback>
             </Avatar>
-            <CardTitle>{(settings.displayName !== '' ? settings.displayName : session.user?.name)}</CardTitle>
+            <CardTitle>{displayName || session.user?.name}</CardTitle>
             <CardDescription>
-              <div className="flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 <User className="w-4 h-4" />
                 <span>@{session.user?.name ?? 'username'}</span>
-              </div>
-              <div className="flex items-center justify-center gap-2 mt-2">
+              </span>
+              <span className="flex items-center justify-center gap-2 mt-2">
                 <Mail className="w-4 h-4" />
                 <span>{session.user?.email}</span>
-              </div>
+              </span>
             </CardDescription>
           </CardHeader>
         </Card>
@@ -135,14 +263,22 @@ export default function Page() {
         {/* Resumes List Card */}
         <Card>
           <CardHeader>
-            <CardTitle>My Resumes</CardTitle>
-            <CardDescription>Manage your created resumes</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>My Resumes</CardTitle>
+                <CardDescription>Manage your created resumes</CardDescription>
+              </div>
+              <Button onClick={() => router.push('/resume/create')} className="gap-2">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">New Resume</span>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
+                  <Skeleton key={i} className="h-64 w-full" />
                 ))}
               </div>
             ) : resumes.length === 0 ? (
@@ -157,51 +293,112 @@ export default function Page() {
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {resumes
                   .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                   .map((resume) => (
                     <Card
                       key={resume.id}
-                      className="hover:bg-accent transition-colors cursor-pointer"
+                      className="group overflow-hidden hover:shadow-md transition-shadow"
                     >
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="cursor-pointer" onClick={() => router.push(`/resume/${resume.id}`)}>
-                            <CardTitle className="text-lg">{resume.id}</CardTitle>
-                            <CardDescription>
-                              Created: {new Date(resume.createdAt).toLocaleDateString()}
-                            </CardDescription>
+                      <button
+                        type="button"
+                        className="block w-full h-48 border-b cursor-pointer text-left"
+                        onClick={() => router.push(`/resume/${resume.id}`)}
+                        aria-label={`Open ${resume.title || defaultTitle(resume)}`}
+                      >
+                        <ResumePreview resume={resume} />
+                      </button>
+                      <div className="p-3">
+                        {editingId === resume.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={editingTitle}
+                              onChange={(e) => setEditingTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveRename(resume.id);
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              className="h-8 text-sm"
+                              autoFocus
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="px-2"
+                              onClick={() => saveRename(resume.id)}
+                              aria-label="Save name"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="px-2"
+                              onClick={() => setEditingId(null)}
+                              aria-label="Cancel rename"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <div className="flex items-center">
-                            <FileText className="w-6 h-6 text-muted-foreground mr-2" />
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <button className="text-red-500 hover:text-red-700 transition-colors">
-                                  <Trash2 />
-                                </button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete your resume.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteResume(resume.id)}
-                                    className="bg-red-500 hover:bg-red-600"
+                        ) : (
+                          <div className="flex items-center justify-between gap-2">
+                            <div
+                              className="min-w-0 cursor-pointer"
+                              onClick={() => router.push(`/resume/${resume.id}`)}
+                            >
+                              <p className="font-medium text-sm truncate">
+                                {resume.title || defaultTitle(resume)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {resume.updatedAt
+                                  ? `Updated ${new Date(resume.updatedAt).toLocaleDateString()}`
+                                  : `Created ${new Date(resume.createdAt).toLocaleDateString()}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="px-2"
+                                onClick={() => startRename(resume)}
+                                aria-label="Rename resume"
+                              >
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="px-2 text-red-500 hover:text-red-600"
+                                    aria-label="Delete resume"
                                   >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete your resume.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteResume(resume.id)}
+                                      className="bg-red-500 hover:bg-red-600"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
-                        </div>
-                      </CardHeader>
+                        )}
+                      </div>
                     </Card>
                   ))}
               </div>

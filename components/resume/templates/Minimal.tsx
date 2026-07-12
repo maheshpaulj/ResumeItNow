@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
+import { useMemo } from 'react';
 import type { TemplateProps } from './types';
-import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
+import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
+import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
+import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
+import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 
 export function MinimalTemplate({
   resumeData,
@@ -22,129 +23,25 @@ export function MinimalTemplate({
     'customSections',
   ],
   showIcons,
+  showPhoto,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
+  showPhoto?: boolean;
 }) {
   // Memoize accentColor to avoid recalculation
   const colors = useMemo(() => ({
     accent: accentColor,
   }), [accentColor]);
 
-  const renderMarkdown = (text: string): string => {
-    if (!text) return '';
-    return text
-      .split('\n')
-      .map((line, index) => {
-        line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        if (line.trim().startsWith('- ') && index === 0) {
-          line = `• ${line.substring(2)}`;
-        } else if (line.trim().startsWith('- ') && index > 0) {
-          line = `<br/>• ${line.substring(2)}`;
-        }
-        return line;
-      })
-      .join('\n');
-  };
 
-  const renderInput = useCallback(
-    ({
-      value,
-      onChange,
-      multiline = false,
-      className = '',
-      type = '',
-      ariaLabel = '',
-      textColor = 'text-gray-600',
-      inlineStyle = {},
-    }: {
-      value: string;
-      onChange: (value: string) => void;
-      multiline?: boolean;
-      className?: string;
-      type?: string;
-      ariaLabel?: string;
-      textColor?: string;
-      inlineStyle?: React.CSSProperties;
-    }) => {
-      if (!isEditing) {
-        if (type === 'link') {
-          return (
-            <a
-              href={value}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        if (type === 'mail') {
-          return (
-            <a
-              href={`mailto:${value}`}
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        if (type === 'phone') {
-          return (
-            <a
-              href={`tel:${value}`}
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        return (
-          <div
-            className={`${textColor} ${className}`}
-            style={inlineStyle}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
-          />
-        );
-      }
-
-      if (multiline) {
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            className={`w-full min-h-[60px] ${textColor} ${className}`}
-            style={inlineStyle}
-            aria-label={ariaLabel}
-          />
-        );
-      }
-
-      return (
-        <Input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className={`focus-visible:ring-2 ${textColor} ${className}`}
-          style={inlineStyle}
-          aria-label={ariaLabel}
-        />
-      );
-    },
-    [isEditing]
-  );
+  const renderInput = useRenderInput(isEditing);
 
   const SectionHeader = ({ title }: { title: string }) => (
     <div
+      data-rb="header"
       className="text-lg text-black font-semibold mb-2 pb-1 border-b-2 border-gray-800 break-inside-avoid"
     >
       <h2>{title}</h2>
@@ -165,112 +62,125 @@ export function MinimalTemplate({
   return (
     <div className="w-full mx-auto bg-white px-6 py-4" style={{ fontFamily }}>
       {/* Personal Details Section */}
-      <div className="mb-6 break-inside-avoid">
-        <div className="text-3xl font-bold text-center">
-          {renderInput({
-            value: resumeData.personalDetails.fullName,
-            onChange: (value) => updateField('personalDetails', null, 'fullName', value),
-            className: 'text-center',
-            textColor: 'text-black',
-            ariaLabel: 'Full name',
-          })}
-        </div>
-        <div className="mb-2">
-          {renderInput({
-            value: resumeData.jobTitle,
-            onChange: (value) => updateField('jobTitle', null, 'jobTitle', value),
-            className: 'text-center',
-            inlineStyle: { color: colors.accent }, // Direct accentColor for job title
-            ariaLabel: 'Job Title',
-          })}
-        </div>
-        <div className="text-center text-sm space-x-3">
-          {resumeData.personalDetails.email && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <Mail className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.email,
-                onChange: (value) => updateField('personalDetails', null, 'email', value),
-                className: 'inline-block',
-                type: 'mail',
-                textColor: 'text-gray-600',
-                ariaLabel: 'Email address',
-              })}
-            </span>
-          )}
-          {resumeData.personalDetails.phone && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <Phone className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.phone,
-                onChange: (value) => updateField('personalDetails', null, 'phone', value),
-                className: 'inline-block',
-                type: 'phone',
-                textColor: 'text-gray-600',
-                ariaLabel: 'Phone number',
-              })}
-            </span>
-          )}
-          {resumeData.personalDetails.location && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.location,
-                onChange: (value) => updateField('personalDetails', null, 'location', value),
-                className: 'inline-block',
-                textColor: 'text-gray-600',
-                ariaLabel: 'Location',
-              })}
-            </span>
-          )}
-        </div>
-        <div className="text-center mt-1 space-x-3">
-          {resumeData.personalDetails.linkedin && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.linkedin,
-                onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
-                className: 'inline-block text-sm',
-                type: 'link',
-                textColor: 'text-gray-600',
-                ariaLabel: 'LinkedIn profile',
-              })}
-            </span>
-          )}
-          {resumeData.personalDetails.github && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <Github className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.github,
-                onChange: (value) => updateField('personalDetails', null, 'github', value),
-                className: 'inline-block text-sm',
-                type: 'link',
-                textColor: 'text-gray-600',
-                ariaLabel: 'GitHub profile',
-              })}
-            </span>
-          )}
-          {resumeData.personalDetails.website && (
-            <span className="inline-flex items-center gap-1">
-              {showIcons && <Globe className="w-4 h-4" style={{ color: colors.accent }} />}
-              {renderInput({
-                value: resumeData.personalDetails.website,
-                onChange: (value) => updateField('personalDetails', null, 'website', value),
-                className: 'inline-block text-sm',
-                type: 'link',
-                textColor: 'text-gray-600',
-                ariaLabel: 'Website',
-              })}
-            </span>
-          )}
+      <div className="mb-6 break-inside-avoid flex flex-col sm:flex-row items-center justify-center gap-6">
+        {showPhoto && (
+          <div className="shrink-0">
+            <PhotoField
+              value={resumeData.personalDetails.photo}
+              isEditing={isEditing}
+              show={showPhoto}
+              onChange={(v) => updateField('personalDetails', null, 'photo', v)}
+              className="h-24 w-24"
+            />
+          </div>
+        )}
+        <div className="flex flex-col items-center">
+          <div className="text-3xl font-bold text-center">
+            {renderInput({
+              value: resumeData.personalDetails.fullName,
+              onChange: (value) => updateField('personalDetails', null, 'fullName', value),
+              className: 'text-center',
+              textColor: 'text-black',
+              ariaLabel: 'Full name',
+            })}
+          </div>
+          <div className="mb-2 flex justify-center text-lg font-medium">
+            {renderInput({
+              value: resumeData.jobTitle,
+              onChange: (value) => updateField('jobTitle', null, 'jobTitle', value),
+              className: 'text-center',
+              inlineStyle: { color: colors.accent }, // Direct accentColor for job title
+              ariaLabel: 'Job Title',
+            })}
+          </div>
+          <div className="text-center text-sm flex flex-wrap justify-center gap-x-4 gap-y-2">
+            {(isEditing || resumeData.personalDetails.email) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <Mail className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.email,
+                  onChange: (value) => updateField('personalDetails', null, 'email', value),
+                  className: 'inline-block break-all',
+                  type: 'mail',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'Email address',
+                })}
+              </span>
+            )}
+            {(isEditing || resumeData.personalDetails.phone) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <Phone className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.phone,
+                  onChange: (value) => updateField('personalDetails', null, 'phone', value),
+                  className: 'inline-block',
+                  type: 'phone',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'Phone number',
+                })}
+              </span>
+            )}
+            {(isEditing || resumeData.personalDetails.location) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.location,
+                  onChange: (value) => updateField('personalDetails', null, 'location', value),
+                  className: 'inline-block',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'Location',
+                })}
+              </span>
+            )}
+          </div>
+          <div className="text-center mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2">
+            {(isEditing || resumeData.personalDetails.linkedin) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <FaLinkedin className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.linkedin,
+                  onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
+                  className: 'inline-block text-sm break-all',
+                  type: 'link',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'LinkedIn profile',
+                })}
+              </span>
+            )}
+            {(isEditing || resumeData.personalDetails.github) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <FaGithub className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.github,
+                  onChange: (value) => updateField('personalDetails', null, 'github', value),
+                  className: 'inline-block text-sm break-all',
+                  type: 'link',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'GitHub profile',
+                })}
+              </span>
+            )}
+            {(isEditing || resumeData.personalDetails.website) && (
+              <span className="inline-flex items-center gap-1">
+                {showIcons && <Globe className="w-4 h-4" style={{ color: colors.accent }} />}
+                {renderInput({
+                  value: resumeData.personalDetails.website,
+                  onChange: (value) => updateField('personalDetails', null, 'website', value),
+                  className: 'inline-block text-sm break-all',
+                  type: 'link',
+                  textColor: 'text-gray-600',
+                  ariaLabel: 'Website',
+                })}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Render sections based on sectionOrder */}
       {sectionOrder.map((section) => (
-        <div key={section} className="mb-4">
-          {section === 'objective' && hasContent(resumeData.objective) && (
+        <EditableSection key={section} id={section} className="mb-4 empty:hidden">
+          {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (
             <div>
               <SectionHeader title="Professional Summary" />
               {renderInput({
@@ -284,21 +194,21 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'workExperience' && hasContent(resumeData.workExperience) && (
+          {section === 'workExperience' && (isEditing || hasContent(resumeData.workExperience)) && (
             <div>
               <SectionHeader title="Work Experience" />
               <div className="space-y-3">
                 {resumeData.workExperience.map((experience, idx) => (
                   <div
                     key={idx}
-                    className="break-inside-avoid pb-3 last:pb-0"
+                    className="relative group/entry break-inside-avoid pb-3 last:pb-0"
                     style={{
                       borderBottom:
                         idx !== resumeData.workExperience.length - 1
                           ? `1px dashed ${colors.accent}`
                           : 'none',
                     }}
-                  >
+                  ><EntryChrome section="workExperience" index={idx} count={resumeData.workExperience.length} />
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex-1">
                         {renderInput({
@@ -360,7 +270,7 @@ export function MinimalTemplate({
                         onChange: (value) =>
                           updateField('workExperience', idx, 'description', value),
                         multiline: true,
-                        className: 'text-sm ml-5 text-justify',
+                        className: 'text-sm pl-5 text-justify',
                         textColor: 'text-gray-600',
                         ariaLabel: 'Job description',
                       })}
@@ -371,21 +281,21 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'projects' && hasContent(resumeData.projects) && (
+          {section === 'projects' && (isEditing || hasContent(resumeData.projects)) && (
             <div>
               <SectionHeader title="Projects" />
               <div className="space-y-3">
                 {resumeData.projects.map((project, idx) => (
                   <div
                     key={idx}
-                    className="break-inside-avoid pb-3 last:pb-0"
+                    className="relative group/entry break-inside-avoid pb-3 last:pb-0"
                     style={{
                       borderBottom:
                         idx !== resumeData.projects.length - 1
                           ? `1px dashed ${colors.accent}`
                           : 'none',
                     }}
-                  >
+                  ><EntryChrome section="projects" index={idx} count={resumeData.projects.length} />
                     <div className="flex flex-col items-start mb-1">
                       {renderInput({
                         value: project.projectName,
@@ -395,7 +305,7 @@ export function MinimalTemplate({
                         textColor: 'text-gray-800',
                         ariaLabel: 'Project name',
                       })}
-                      {project.link && (
+                      {(isEditing || project.link) && (
                         <div className="flex items-center gap-1">
                           {showIcons && <Link2 className="w-4 h-4" style={{ color: colors.accent }} />}
                           {renderInput({
@@ -415,7 +325,7 @@ export function MinimalTemplate({
                       onChange: (value) =>
                         updateField('projects', idx, 'description', value),
                       multiline: true,
-                      className: 'text-sm ml-5 text-justify',
+                      className: 'text-sm pl-5 text-justify',
                       textColor: 'text-gray-600',
                       ariaLabel: 'Project description',
                     })}
@@ -425,12 +335,12 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'education' && hasContent(resumeData.education) && (
+          {section === 'education' && (isEditing || hasContent(resumeData.education)) && (
             <div>
               <SectionHeader title="Education" />
               <div className="space-y-3">
                 {resumeData.education.map((edu, idx) => (
-                  <div key={idx} className="break-inside-avoid pb-3 last:pb-0">
+                  <div key={idx} className="relative group/entry break-inside-avoid pb-3 last:pb-0"><EntryChrome section="education" index={idx} count={resumeData.education.length} />
                     <div className="flex justify-between items-start">
                       {renderInput({
                         value: edu.degree,
@@ -483,7 +393,19 @@ export function MinimalTemplate({
                         )}
                       </div>
                     </div>
-                    {edu.description && (
+                    {(isEditing || edu.gpa) && (
+                      <div className="text-sm text-gray-600">
+                        GPA:{' '}
+                        {renderInput({
+                          value: edu.gpa || '',
+                          onChange: (value) => updateField('education', idx, 'gpa', value),
+                          className: 'inline-block',
+                          textColor: 'text-gray-600',
+                          ariaLabel: 'GPA',
+                        })}
+                      </div>
+                    )}
+                    {(isEditing || edu.description) && (
                       <div className="text-sm">
                         {renderInput({
                           value: edu.description,
@@ -501,12 +423,17 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'skills' && hasContent(resumeData.skills) && (
+          {section === 'skills' && (isEditing || hasContent(resumeData.skills)) && (
             <div>
               <SectionHeader title="Skills" />
               <div className="space-y-1">
                 {resumeData.skills.map((skill, idx) => (
-                  <div key={idx} className="break-inside-avoid">
+                  <div key={idx} className="relative group/entry break-inside-avoid"><EntryChrome section="skills" index={idx} count={resumeData.skills.length} />
+                    {isEditing && (
+                      <div className="absolute right-0 top-0 z-10">
+                        <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', idx, 'skillType', t)} />
+                      </div>
+                    )}
                     {skill.skillType === 'individual' ? (
                       renderInput({
                         value: skill.skill,
@@ -542,12 +469,12 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'certifications' && hasContent(resumeData.certifications) && (
+          {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
             <div>
               <SectionHeader title="Certifications" />
               <div className="space-y-2">
                 {resumeData.certifications.map((cert, idx) => (
-                  <div key={idx} className="break-inside-avoid">
+                  <div key={idx} className="relative group/entry break-inside-avoid"><EntryChrome section="certifications" index={idx} count={resumeData.certifications.length} />
                     <div className="flex justify-between items-start">
                       {renderInput({
                         value: cert.certificationName,
@@ -582,12 +509,12 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'languages' && hasContent(resumeData.languages) && (
+          {section === 'languages' && (isEditing || hasContent(resumeData.languages)) && (
             <div>
               <SectionHeader title="Languages" />
               <div className="space-y-1">
                 {resumeData.languages.map((language, idx) => (
-                  <div key={idx} className="break-inside-avoid text-sm flex items-center gap-2">
+                  <div key={idx} className="relative group/entry break-inside-avoid text-sm flex items-center gap-2"><EntryChrome section="languages" index={idx} count={resumeData.languages.length} />
                     {renderInput({
                       value: language.language,
                       onChange: (value) =>
@@ -610,10 +537,10 @@ export function MinimalTemplate({
             </div>
           )}
 
-          {section === 'customSections' && hasContent(resumeData.customSections) && (
+          {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
               {resumeData.customSections.map((custom, idx) => (
-                <div key={idx} className="break-inside-avoid mb-4 last:mb-0">
+                <div key={idx} className="relative group/entry break-inside-avoid mb-4 last:mb-0"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
                   <SectionHeader title={custom.sectionTitle} />
                   {renderInput({
                     value: custom.content,
@@ -628,7 +555,7 @@ export function MinimalTemplate({
               ))}
             </div>
           )}
-        </div>
+        </EditableSection>
       ))}
     </div>
   );

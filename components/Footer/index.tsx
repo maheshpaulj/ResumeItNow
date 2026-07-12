@@ -1,5 +1,6 @@
 "use client";
-import { Github, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { FaGithub } from "react-icons/fa6";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,7 +19,7 @@ interface FooterSection {
 interface SocialLink {
   platform: string;
   href: string;
-  icon: JSX.Element;
+  icon: React.JSX.Element;
 }
 
 const productLinks: FooterSection = {
@@ -45,7 +46,7 @@ const socialLinks: SocialLink[] = [
   {
     platform: "GitHub",
     href: "https://github.com/maheshpaulj/ResumeItNow",
-    icon: <Github className="h-5 w-5" />,
+    icon: <FaGithub className="h-5 w-5" />,
   },
   {
     platform: "Email",

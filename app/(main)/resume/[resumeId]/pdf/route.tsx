@@ -68,6 +68,16 @@ interface ResumeData {
   projects: Project[];
   languages: Language[];
   certifications: Certification[];
+  customSections?: any[];
+  accentColor?: string;
+  fontFamily?: string;
+  sectionOrder?: string[];
+  showIcons?: boolean;
+  showPhoto?: boolean;
+  editorMode?: 'visual' | 'latex';
+  latexContent?: string;
+  margins?: 'normal' | 'narrow';
+  template?: string;
 }
 
 Font.register({
@@ -905,9 +915,10 @@ const templates = {
 
 export async function GET(
   request: Request, 
-  { params }: { params: { resumeId: string } }
+  { params }: { params: Promise<{ resumeId: string }> }
 ) {
   try {
+    const { resumeId } = await params;
     // Get session and validate
     const session = await getServerSession(authOptions);
     const userId = session?.user?.email || "temp_resumes";
@@ -917,7 +928,7 @@ export async function GET(
     const templateName = searchParams.get('template') || 'minimal';
 
     // Fetch resume data
-    const resumeRef = doc(db, `users/${userId}/resumes/${params.resumeId}`);
+    const resumeRef = doc(db, `users/${userId}/resumes/${resumeId}`);
     const resumeSnap = await getDoc(resumeRef);
 
     if (!resumeSnap.exists()) {

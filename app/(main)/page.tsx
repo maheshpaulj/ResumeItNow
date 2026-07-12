@@ -129,12 +129,11 @@ export default function HomePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-3xl font-bold text-primary">
-            <CountUp 
-                start={0} 
-                end={resumesCreated} 
-                duration={2.5} 
-                separator="," 
-                enableScrollSpy={true}
+            <CountUp
+                start={0}
+                end={resumesCreated}
+                duration={2.5}
+                separator=","
               />+
             </p>
             <p className="text-sm text-muted-foreground">Resumes Created</p>

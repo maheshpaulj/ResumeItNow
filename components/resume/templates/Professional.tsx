@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
+import { useMemo } from 'react';
 import type { TemplateProps } from './types';
-import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Linkedin, Github, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
+import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
+import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
+import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
+import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 
 export function ProfessionalTemplate({
   resumeData,
@@ -22,132 +23,28 @@ export function ProfessionalTemplate({
     'customSections',
   ],
   showIcons,
+  showPhoto,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
+  showPhoto?: boolean;
 }) {
   // Memoize accentColor directly
   const colors = useMemo(() => ({
     accent: accentColor,
   }), [accentColor]);
 
-  const renderMarkdown = (text: string): string => {
-    if (!text) return '';
-    return text
-      .split('\n')
-      .map((line, index) => {
-        line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        if (line.trim().startsWith('- ') && index === 0) {
-          line = `• ${line.substring(2)}`;
-        } else if (line.trim().startsWith('- ') && index > 0) {
-          line = `<br/>• ${line.substring(2)}`;
-        }
-        return line;
-      })
-      .join('\n');
-  };
 
-  const renderInput = useCallback(
-    ({
-      value,
-      onChange,
-      multiline = false,
-      className = '',
-      type = '',
-      ariaLabel = '',
-      textColor = 'text-gray-600',
-      inlineStyle = {},
-    }: {
-      value: string;
-      onChange: (value: string) => void;
-      multiline?: boolean;
-      className?: string;
-      type?: string;
-      ariaLabel?: string;
-      textColor?: string;
-      inlineStyle?: React.CSSProperties;
-    }) => {
-      if (!isEditing) {
-        if (type === 'link') {
-          return (
-            <a
-              href={value}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        if (type === 'mail') {
-          return (
-            <a
-              href={`mailto:${value}`}
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        if (type === 'phone') {
-          return (
-            <a
-              href={`tel:${value}`}
-              className={`hover:underline ${textColor} ${className}`}
-              style={inlineStyle}
-              aria-label={ariaLabel}
-            >
-              {value}
-            </a>
-          );
-        }
-        return (
-          <div
-            className={`${textColor} ${className}`}
-            style={inlineStyle}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
-          />
-        );
-      }
-
-      if (multiline) {
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            className={`w-full min-h-[60px] ${textColor} ${className}`}
-            style={inlineStyle}
-            aria-label={ariaLabel}
-          />
-        );
-      }
-
-      return (
-        <Input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className={`focus-visible:ring-2 ${textColor} ${className}`}
-          style={inlineStyle}
-          aria-label={ariaLabel}
-        />
-      );
-    },
-    [isEditing]
-  );
+  const renderInput = useRenderInput(isEditing);
 
   const SectionHeader = ({ title }: { title: string }) => (
     <div
-      className="flex items-center gap-2 text-lg text-black font-semibold mb-3 border-b-2 border-gray-800" // Black title, dark gray border
+      data-rb="header"
+      className="text-lg text-black font-semibold mb-3 border-b-2 border-gray-800 break-inside-avoid"
     >
-      <h2 className="text-center w-full">{title}</h2>
+      <h2 className="text-center">{title}</h2>
     </div>
   );
 
@@ -166,8 +63,16 @@ export function ProfessionalTemplate({
     <div className={`w-full mx-auto bg-white px-6 py-4`} style={{ fontFamily }}>
       {/* Personal Details Section */}
       <div className="mb-8 break-inside-avoid">
-        <div className="flex justify-between w-full">
-          <div className="flex flex-col">
+        <div className="flex justify-between w-full gap-4">
+          <div className="flex items-center gap-3">
+            <PhotoField
+              value={resumeData.personalDetails.photo}
+              isEditing={isEditing}
+              show={showPhoto}
+              onChange={(value) => updateField('personalDetails', null, 'photo', value)}
+              className="h-20 w-20"
+            />
+            <div className="flex flex-col">
             <h1 className="text-4xl font-bold">
               {renderInput({
                 value: resumeData.personalDetails.fullName,
@@ -186,9 +91,10 @@ export function ProfessionalTemplate({
                 ariaLabel: 'Job Title',
               })}
             </p>
+            </div>
           </div>
           <div className="text-right text-sm">
-            {resumeData.personalDetails.email && (
+            {(isEditing || resumeData.personalDetails.email) && (
               <div className="flex items-center gap-1 justify-end">
                 {showIcons && <Mail className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
@@ -201,7 +107,7 @@ export function ProfessionalTemplate({
                 })}
               </div>
             )}
-            {resumeData.personalDetails.phone && (
+            {(isEditing || resumeData.personalDetails.phone) && (
               <div className="flex items-center gap-1 justify-end">
                 {showIcons && <Phone className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
@@ -214,7 +120,7 @@ export function ProfessionalTemplate({
                 })}
               </div>
             )}
-            {resumeData.personalDetails.location && (
+            {(isEditing || resumeData.personalDetails.location) && (
               <div className="flex items-center gap-1 justify-end">
                 {showIcons && <MapPin className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
@@ -226,39 +132,39 @@ export function ProfessionalTemplate({
                 })}
               </div>
             )}
-            {resumeData.personalDetails.linkedin && (
+            {(isEditing || resumeData.personalDetails.linkedin) && (
               <div className="flex items-center gap-1 justify-end">
-                {showIcons && <Linkedin className="w-4 h-4" style={{ color: colors.accent }} />}
+                {showIcons && <FaLinkedin className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.linkedin,
                   onChange: (value) => updateField('personalDetails', null, 'linkedin', value),
-                  className: 'inline-block text-sm',
+                  className: 'inline-block text-sm break-all',
                   type: 'link',
                   textColor: 'text-gray-600',
                   ariaLabel: 'LinkedIn profile',
                 })}
               </div>
             )}
-            {resumeData.personalDetails.github && (
+            {(isEditing || resumeData.personalDetails.github) && (
               <div className="flex items-center gap-1 justify-end">
-                {showIcons && <Github className="w-4 h-4" style={{ color: colors.accent }} />}
+                {showIcons && <FaGithub className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.github,
                   onChange: (value) => updateField('personalDetails', null, 'github', value),
-                  className: 'inline-block text-sm',
+                  className: 'inline-block text-sm break-all',
                   type: 'link',
                   textColor: 'text-gray-600',
                   ariaLabel: 'GitHub profile',
                 })}
               </div>
             )}
-            {resumeData.personalDetails.website && (
+            {(isEditing || resumeData.personalDetails.website) && (
               <div className="flex items-center gap-1 justify-end">
                 {showIcons && <Globe className="w-4 h-4" style={{ color: colors.accent }} />}
                 {renderInput({
                   value: resumeData.personalDetails.website,
                   onChange: (value) => updateField('personalDetails', null, 'website', value),
-                  className: 'inline-block text-sm',
+                  className: 'inline-block text-sm break-all',
                   type: 'link',
                   textColor: 'text-gray-600',
                   ariaLabel: 'Website',
@@ -271,9 +177,9 @@ export function ProfessionalTemplate({
 
       {/* Render sections based on sectionOrder */}
       {sectionOrder.map((section) => (
-        <div key={section} className="break-inside-avoid mb-6">
-          {section === 'objective' && hasContent(resumeData.objective) && (
-            <div className="break-inside-avoid">
+        <EditableSection key={section} id={section} className="mb-6 empty:hidden">
+          {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (
+            <div>
               <SectionHeader title="Professional Summary" />
               {renderInput({
                 value: resumeData.objective,
@@ -286,16 +192,16 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'workExperience' && hasContent(resumeData.workExperience) && (
-            <div className="break-inside-avoid">
+          {section === 'workExperience' && (isEditing || hasContent(resumeData.workExperience)) && (
+            <div>
               <SectionHeader title="Work Experience" />
               {resumeData.workExperience.map((experience, index) => (
                 <div
                   key={index}
-                  className={`pb-4 break-inside-avoid ${
+                  className={`relative group/entry pb-4 break-inside-avoid ${
                     index !== resumeData.workExperience.length - 1 ? 'mb-4 border-b-2 border-dashed border-gray-800' : ''
                   }`}
-                >
+                ><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
                   <div className="flex justify-between items-start mb-1">
                     <div className="flex-1">
                       {renderInput({
@@ -310,6 +216,7 @@ export function ProfessionalTemplate({
                       {renderInput({
                         value: experience.startDate,
                         onChange: (value) => updateField('workExperience', index, 'startDate', value),
+                        type: 'date',
                         textColor: 'text-gray-600',
                         ariaLabel: 'Start date',
                       })}
@@ -317,6 +224,8 @@ export function ProfessionalTemplate({
                       {renderInput({
                         value: experience.endDate,
                         onChange: (value) => updateField('workExperience', index, 'endDate', value),
+                        type: 'date',
+                        allowPresent: true,
                         textColor: 'text-gray-600',
                         ariaLabel: 'End date',
                       })}
@@ -362,7 +271,7 @@ export function ProfessionalTemplate({
                       value: experience.description,
                       onChange: (value) => updateField('workExperience', index, 'description', value),
                       multiline: true,
-                      className: 'text-sm ml-4 text-justify',
+                      className: 'text-sm pl-4 text-justify',
                       textColor: 'text-gray-600',
                       ariaLabel: 'Job description',
                     })}
@@ -372,16 +281,16 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'projects' && hasContent(resumeData.projects) && (
-            <div className="break-inside-avoid">
+          {section === 'projects' && (isEditing || hasContent(resumeData.projects)) && (
+            <div>
               <SectionHeader title="Projects" />
               {resumeData.projects.map((project, index) => (
                 <div
                   key={index}
-                  className={`pb-4 break-inside-avoid ${
+                  className={`relative group/entry pb-4 break-inside-avoid ${
                     index !== resumeData.projects.length - 1 ? 'mb-4 border-b-2 border-dashed border-gray-800' : ''
                   }`}
-                >
+                ><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
                   <div className="flex items-center justify-between mb-1">
                     {renderInput({
                       value: project.projectName,
@@ -390,7 +299,7 @@ export function ProfessionalTemplate({
                       textColor: 'text-gray-800',
                       ariaLabel: 'Project name',
                     })}
-                    {project.link && (
+                    {(isEditing || project.link) && (
                       <div className="flex items-center gap-1">
                         {showIcons && <Link2 className="w-4 h-4" style={{ color: colors.accent }} />}
                         {renderInput({
@@ -408,7 +317,7 @@ export function ProfessionalTemplate({
                     value: project.description,
                     onChange: (value) => updateField('projects', index, 'description', value),
                     multiline: true,
-                    className: 'text-sm ml-4 text-justify',
+                    className: 'text-sm pl-4 text-justify',
                     textColor: 'text-gray-600',
                     ariaLabel: 'Project description',
                   })}
@@ -417,11 +326,11 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'education' && hasContent(resumeData.education) && (
-            <div className="break-inside-avoid">
+          {section === 'education' && (isEditing || hasContent(resumeData.education)) && (
+            <div>
               <SectionHeader title="Education" />
               {resumeData.education.map((edu, index) => (
-                <div key={index} className="mb-4 last:mb-0 break-inside-avoid">
+                <div key={index} className="relative group/entry mb-4 last:mb-0 break-inside-avoid"><EntryChrome section="education" index={index} count={resumeData.education.length} />
                   <div className="flex justify-between items-start">
                     {renderInput({
                       value: edu.degree,
@@ -434,6 +343,7 @@ export function ProfessionalTemplate({
                       {renderInput({
                         value: edu.startDate,
                         onChange: (value) => updateField('education', index, 'startDate', value),
+                        type: 'date',
                         textColor: 'text-gray-600',
                         ariaLabel: 'Start date',
                       })}
@@ -441,6 +351,8 @@ export function ProfessionalTemplate({
                       {renderInput({
                         value: edu.endDate,
                         onChange: (value) => updateField('education', index, 'endDate', value),
+                        type: 'date',
+                        allowPresent: true,
                         textColor: 'text-gray-600',
                         ariaLabel: 'End date',
                       })}
@@ -470,7 +382,19 @@ export function ProfessionalTemplate({
                       )}
                     </div>
                   </div>
-                  {edu.description && (
+                  {(isEditing || edu.gpa) && (
+                    <div className="text-sm text-gray-600">
+                      GPA:{' '}
+                      {renderInput({
+                        value: edu.gpa || '',
+                        onChange: (value) => updateField('education', index, 'gpa', value),
+                        className: 'inline-block',
+                        textColor: 'text-gray-600',
+                        ariaLabel: 'GPA',
+                      })}
+                    </div>
+                  )}
+                  {(isEditing || edu.description) && (
                     <div className="text-sm">
                       {renderInput({
                         value: edu.description,
@@ -486,12 +410,17 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'skills' && hasContent(resumeData.skills) && (
-            <div className="break-inside-avoid">
+          {section === 'skills' && (isEditing || hasContent(resumeData.skills)) && (
+            <div>
               <SectionHeader title="Skills" />
               <div className="space-y-2">
                 {resumeData.skills.map((skill, index) => (
-                  <div key={index} className="flex items-start break-inside-avoid">
+                  <div key={index} className="relative group/entry flex items-start break-inside-avoid"><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
+                    {isEditing && (
+                      <div className="absolute right-0 top-0 z-10">
+                        <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', index, 'skillType', t)} />
+                      </div>
+                    )}
                     {skill.skillType === 'individual' ? (
                       renderInput({
                         value: skill.skill,
@@ -525,11 +454,11 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'certifications' && hasContent(resumeData.certifications) && (
-            <div className="break-inside-avoid">
+          {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
+            <div>
               <SectionHeader title="Certifications" />
               {resumeData.certifications.map((cert, index) => (
-                <div key={index} className="mb-3 last:mb-0 break-inside-avoid">
+                <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid"><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                   <div className="flex justify-between items-start">
                     {renderInput({
                       value: cert.certificationName,
@@ -542,6 +471,7 @@ export function ProfessionalTemplate({
                       {renderInput({
                         value: cert.issueDate,
                         onChange: (value) => updateField('certifications', index, 'issueDate', value),
+                        type: 'date',
                         className: 'text-xs italic',
                         textColor: 'text-gray-600',
                         ariaLabel: 'Certification date',
@@ -562,12 +492,12 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'languages' && hasContent(resumeData.languages) && (
-            <div className="break-inside-avoid">
+          {section === 'languages' && (isEditing || hasContent(resumeData.languages)) && (
+            <div>
               <SectionHeader title="Languages" />
               <div className="flex flex-col space-y-2">
                 {resumeData.languages.map((language, index) => (
-                  <div key={index} className="text-sm flex items-center gap-2 p-1 rounded-md break-inside-avoid">
+                  <div key={index} className="relative group/entry text-sm flex items-center gap-2 p-1 rounded-md break-inside-avoid"><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
                     {renderInput({
                       value: language.language,
                       onChange: (value) => updateField('languages', index, 'language', value),
@@ -588,10 +518,10 @@ export function ProfessionalTemplate({
             </div>
           )}
 
-          {section === 'customSections' && hasContent(resumeData.customSections) && (
-            <div className="break-inside-avoid">
+          {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
+            <div>
               {resumeData.customSections.map((custom, idx) => (
-                <div key={idx} className="mb-4 break-inside-avoid">
+                <div key={idx} className="relative group/entry mb-4 break-inside-avoid"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
                   <SectionHeader title={custom.sectionTitle} />
                   {renderInput({
                     value: custom.content,
@@ -605,7 +535,7 @@ export function ProfessionalTemplate({
               ))}
             </div>
           )}
-        </div>
+        </EditableSection>
       ))}
     </div>
   );

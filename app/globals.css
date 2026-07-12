@@ -76,3 +76,42 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for resume pages */
+@media print {
+  @page {
+    size: A4;
+  }
+  nav,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #resume-content {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+  /* Never leave a section heading stranded at the bottom of a page */
+  #resume-content h2 {
+    break-after: avoid-page;
+    break-inside: avoid;
+  }
+  #resume-content a {
+    text-decoration: none !important;
+  }
+  #resume-content input,
+  #resume-content textarea {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+}

@@ -34,7 +34,6 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
         type="submit"
         disabled={isSubmitting}
         className={step === 0 ? "w-full" : ""}
-        onClick={() => console.log("clicking next")}
       >
         {isSubmitting ? (
           <>

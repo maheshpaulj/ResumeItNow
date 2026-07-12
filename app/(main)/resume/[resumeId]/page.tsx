@@ -77,6 +77,11 @@ interface ResumeData {
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
+  showPhoto?: boolean;
+  editorMode?: 'visual' | 'latex';
+  latexContent?: string;
+  margins?: 'normal' | 'narrow';
+  template?: string;
 }
 
 async function getResumeData(resumeId: string): Promise<ResumeData | null> {
@@ -98,10 +103,11 @@ async function getResumeData(resumeId: string): Promise<ResumeData | null> {
 }
 
 export default async function Page({
-  params: { resumeId },
+  params,
 }: {
-  params: { resumeId: string };
+  params: Promise<{ resumeId: string }>;
 }) {
+  const { resumeId } = await params;
   const resumeData = await getResumeData(resumeId);
   const session = await getServerSession(authOptions);
 

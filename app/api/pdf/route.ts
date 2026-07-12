@@ -6,78 +6,113 @@ import chromium from "@sparticuz/chromium-min";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
+interface PdfPayload {
+    data?: unknown;
+    template?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    sectionOrder?: unknown;
+    showIcons?: string | boolean;
+    showPhoto?: string | boolean;
+    pageFormat?: string;
+    margins?: 'normal' | 'narrow';
+}
 
-    if (!searchParams.toString()) {
-        return NextResponse.json(
-            { message: "No query parameters provided" },
-            { status: 400 }
+async function launch(): Promise<Browser | BrowserCore> {
+    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+        const executablePath = await chromium.executablePath(
+            "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar"
         );
+        return puppeteerCore.launch({
+            executablePath,
+            args: chromium.args,
+            headless: true,
+        });
     }
+    // "shell" headless is fully windowless (new-headless can flash a window on Windows)
+    return puppeteer.launch({
+        headless: "shell",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+}
 
+async function renderPdf(payload: PdfPayload) {
+    const browser = await launch();
     try {
-        let browser: Browser | BrowserCore;
-        if (
-            process.env.NODE_ENV === "production" ||
-            process.env.VERCEL_ENV === "production"
-        ) {
-            const executablePath = await chromium.executablePath(
-                "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar"
-            );
-            browser = await puppeteerCore.launch({
-                executablePath,
-                args: chromium.args,
-                headless: chromium.headless,
-                defaultViewport: chromium.defaultViewport,
-            });
-        } else {
-            console.log("Launching Puppeteer in development mode");
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            });
-        }
-
         const page = await browser.newPage();
 
-        const url = new URL(`${process.env.BASE_URL}/resume/download`);
-        url.search = searchParams.toString();
+        // Inject the resume payload as a page global so we never hit URL-length
+        // limits — a profile photo (base64 data URL) can be tens of KB.
+        await page.evaluateOnNewDocument((p) => {
+            (window as unknown as { __RESUME_PAYLOAD__?: unknown }).__RESUME_PAYLOAD__ = p;
+        }, payload as Record<string, unknown>);
 
-        await page.goto(url.toString(), { waitUntil: "networkidle0" });
-        await page.waitForSelector("#resume-content", {
-            visible: true,
-            timeout: 30000,
+        await page.goto(`${process.env.BASE_URL}/resume/download`, {
+            waitUntil: "networkidle0",
         });
+        await page.waitForSelector("#resume-content", { visible: true, timeout: 30000 });
+        await page.evaluateHandle("document.fonts.ready");
 
+        const pageFormat = payload.pageFormat === "letter" ? "letter" : "a4";
+        const pageMargin = payload.margins === 'narrow' ? '24px' : '36px';
         const pdf = await page.pdf({
-            format: "A4",
+            format: pageFormat,
             printBackground: true,
-            margin: {
-                top: "20px",
-                right: "10px",
-                bottom: "20px",
-                left: "10px",
-            },
+            margin: payload.template === 'sidebar' 
+                ? { top: "0px", right: "0px", bottom: "0px", left: "0px" }
+                : { top: pageMargin, right: "0px", bottom: pageMargin, left: "0px" },
         });
-
+        return Buffer.from(pdf);
+    } finally {
         await browser.close();
+    }
+}
 
-        // Converts Uint8Array to buffer for NextResponse
-        const buffer = Buffer.from(pdf);
+function pdfResponse(buffer: Buffer) {
+    return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename=resume.pdf`,
+        },
+    });
+}
 
-        return new NextResponse(buffer, {
-            status: 200,
-            headers: {
-                "Content-Type": "application/pdf",
-                "Content-Disposition": `attachment; filename=resume.pdf`,
-            },
-        });
+export async function POST(request: NextRequest) {
+    try {
+        const payload = (await request.json()) as PdfPayload;
+        if (!payload?.data) {
+            return NextResponse.json({ message: "No resume data provided" }, { status: 400 });
+        }
+        return pdfResponse(await renderPdf(payload));
     } catch (error) {
         console.error("PDF generation error:", error);
-        return NextResponse.json(
-            { message: "Error generating PDF" },
-            { status: 500 }
-        );
+        return NextResponse.json({ message: "Error generating PDF" }, { status: 500 });
+    }
+}
+
+// Kept for backward compatibility (small resumes via query string).
+export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
+    if (!searchParams.toString()) {
+        return NextResponse.json({ message: "No query parameters provided" }, { status: 400 });
+    }
+    try {
+        const payload: PdfPayload = {
+            data: searchParams.get("data") ? JSON.parse(searchParams.get("data")!) : undefined,
+            template: searchParams.get("template") || undefined,
+            accentColor: searchParams.get("accentColor") || undefined,
+            fontFamily: searchParams.get("fontFamily") || undefined,
+            sectionOrder: searchParams.get("sectionOrder")
+                ? JSON.parse(searchParams.get("sectionOrder")!)
+                : undefined,
+            showIcons: searchParams.get("showIcons") || undefined,
+            showPhoto: searchParams.get("showPhoto") || undefined,
+            pageFormat: searchParams.get("pageFormat") || undefined,
+        };
+        return pdfResponse(await renderPdf(payload));
+    } catch (error) {
+        console.error("PDF generation error:", error);
+        return NextResponse.json({ message: "Error generating PDF" }, { status: 500 });
     }
 }

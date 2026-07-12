@@ -87,10 +87,17 @@ export default function StepForm() {
     getValues,
     reset
   } = useForm<FormValues>({
-    resolver: zodResolver(steps[step].schema),
+    // Each step validates only its own slice of the form, so the per-step
+    // schema is narrower than FormValues — cast to keep a single form instance.
+    resolver: zodResolver(
+      steps[step].schema as never
+    ) as unknown as import('react-hook-form').Resolver<FormValues>,
     defaultValues: {
       personalDetails: {
-        fullName: localStorage.getItem("resumeitnow_name") || session?.user?.name || "",
+        fullName:
+          (typeof window !== "undefined" && localStorage.getItem("resumeitnow_name")) ||
+          session?.user?.name ||
+          "",
         email: session?.user?.email || "",
         phone: "",
         linkedin: "",
@@ -168,10 +175,7 @@ export default function StepForm() {
   }, [watch, step, isInitialLoad, getValues]);
 
   const onSubmit = async () => {
-    console.log("submit running, step:", step);
     if (step < steps.length - 1) {
-      const currentErrors = errors; 
-      console.log(currentErrors);
       setStep(step + 1);
       return;
     }
@@ -179,7 +183,7 @@ export default function StepForm() {
     setIsSubmitting(true);
     try {
       const userId = session?.user?.email || "temp_resumes";
-      
+
       const resumeId = `resume_${new Date().getTime()}`;
       const docRef = doc(db, `users/${userId}/resumes/${resumeId}`);
 
@@ -190,30 +194,27 @@ export default function StepForm() {
 
       // Get all form data
       const completeFormData = getValues();
-      
+
       await setDoc(docRef, {
         ...completeFormData,
-        ...completeFormData,
+        title:
+          completeFormData.jobTitle ||
+          completeFormData.personalDetails?.fullName ||
+          "Untitled Resume",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
 
-      // Show success toast
       toast({
         title: "Success",
-        description: "Resume saved successfully!.. Redirecting to Resume",
+        description: "Resume saved successfully! Redirecting...",
         duration: 3000,
       });
 
       // Clear localStorage after successful submission
       clearLocalStorageData();
 
-      // Clear localStorage after successful submission
-      clearLocalStorageData();
-
-      setTimeout(() => {
-        router.push(`/resume/${resumeId}`);
-      }, 3000);
+      router.push(`/resume/${resumeId}`);
 
     } catch (error) {
       console.error("Error saving resume:", error);
@@ -330,18 +331,22 @@ export default function StepForm() {
                   index !== steps.length - 1 ? "pr-2" : ""
                 }`}
               >
-                {/* Step circle */}
-                <div
-                  className={`h-8 w-8 flex items-center justify-center rounded-full text-foreground font-bold ${
+                {/* Step circle — completed steps are clickable to jump back */}
+                <button
+                  type="button"
+                  onClick={() => index < step && setStep(index)}
+                  disabled={index >= step}
+                  aria-label={`Go to step ${index + 1}: ${stepInfo.title}`}
+                  className={`h-8 w-8 flex items-center justify-center rounded-full text-foreground font-bold transition-colors ${
                     index < step
-                      ? "bg-primary text-secondary"
+                      ? "bg-primary text-secondary cursor-pointer hover:opacity-80"
                       : index === step
                       ? "bg-none border-2 border-foreground"
                       : "bg-secondary"
                   }`}
                 >
                   {index + 1}
-                </div>
+                </button>
                 {/* Step title */}
                 <p
                   className={`text-xs text-center mt-2 ${

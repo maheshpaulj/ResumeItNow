@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
     darkMode: ["class"],
@@ -6,7 +8,6 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-	"./node_modules/@mdxeditor/editor/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
   	extend: {
@@ -59,6 +60,6 @@ const config: Config = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate"),require('@tailwindcss/typography')],
+  plugins: [tailwindcssAnimate, typography],
 };
 export default config;
