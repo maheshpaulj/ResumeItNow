@@ -61,7 +61,8 @@ async function renderPdf(payload: PdfPayload) {
             (window as unknown as { __RESUME_PAYLOAD__?: unknown }).__RESUME_PAYLOAD__ = p;
         }, payload as Record<string, unknown>);
 
-        await page.goto(`${process.env.BASE_URL}/resume/download`, {
+        const fontParam = payload.fontFamily ? `?fontFamily=${encodeURIComponent(payload.fontFamily)}` : '';
+        await page.goto(`${process.env.BASE_URL}/resume/download${fontParam}`, {
             waitUntil: "networkidle0",
         });
 

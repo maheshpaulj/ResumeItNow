@@ -31,7 +31,7 @@ const DownloadContent = () => {
   const [resumeData, setResumeData] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey | null>(null);
   const [accentColor, setAccentColor] = useState<string | undefined>(undefined);
-  const [fontFamily, setFontFamily] = useState<string | undefined>(undefined);
+  const [fontFamily, setFontFamily] = useState<string | undefined>(searchParams.get('fontFamily') || undefined);
   const [sectionOrder, setSectionOrder] = useState<string[] | undefined>(undefined);
   const [showIcons, setShowIcons] = useState<boolean>(false);
   const [showPhoto, setShowPhoto] = useState<boolean>(false);
@@ -107,12 +107,23 @@ const DownloadContent = () => {
     }
   }, [searchParams]);
 
+  const googleFont = fontFamily && GOOGLE_FONTS[fontFamily];
+
   if (!resumeData || !selectedTemplate) {
-    return <div>Loading...</div>;
+    return (
+      <div className="bg-white">
+        {googleFont && (
+          <link
+            rel="stylesheet"
+            href={`https://fonts.googleapis.com/css2?family=${googleFont}&display=swap`}
+          />
+        )}
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   const TemplateComponent = TEMPLATES[selectedTemplate];
-  const googleFont = fontFamily && GOOGLE_FONTS[fontFamily];
 
   return (
     <div className="bg-white">
