@@ -28,12 +28,14 @@ export function SidebarTemplate({
   ],
   showIcons = true,
   showPhoto,
+  customMargins,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
   showPhoto?: boolean;
+  customMargins?: { top: number; bottom: number; left: number; right: number };
 }) {
   const sidebarBg = useMemo(() => lightenColor(accentColor, 92), [accentColor]);
 
@@ -43,9 +45,9 @@ export function SidebarTemplate({
   const hasContent = (section: unknown): boolean => {
     if (!section) return false;
     if (Array.isArray(section)) return section.length > 0;
-    if (typeof section === 'object') {
-      return Object.values(section as object).some((v) =>
-        typeof v === 'string' ? v.trim() !== '' : Boolean(v)
+    if (typeof section === 'object' && section !== null) {
+      return Object.values(section).some((value) =>
+        typeof value === 'string' ? value.trim() !== '' : Boolean(value)
       );
     }
     return typeof section === 'string' ? section.trim() !== '' : Boolean(section);
@@ -82,16 +84,18 @@ export function SidebarTemplate({
       <div className="hidden print:block fixed inset-y-0 left-0 w-[34%] -z-10" style={{ backgroundColor: sidebarBg }} />
       
       {/* Sidebar — negative vertical margins bleed the accent column past the
-          page's 36px top/bottom margin (editor + PDF) so it fills to the edge;
-          padding keeps the content aligned with the main column. */}
+          page's top/bottom margin so it fills to the edge;
+          padding keeps the content aligned. */}
       <div
-        className="w-[34%] px-5"
+        className="w-[34%]"
         style={{
           backgroundColor: sidebarBg,
-          marginTop: '-36px',
-          marginBottom: '-36px',
-          paddingTop: '36px',
-          paddingBottom: '36px',
+          marginTop: customMargins ? `-${customMargins.top}px` : '-36px',
+          marginBottom: customMargins ? `-${customMargins.bottom}px` : '-36px',
+          paddingTop: customMargins ? `${customMargins.top}px` : '36px',
+          paddingBottom: customMargins ? `${customMargins.bottom}px` : '36px',
+          paddingLeft: customMargins ? `${customMargins.left}px` : '1.25rem',
+          paddingRight: customMargins ? `${customMargins.right}px` : '1.25rem',
         }}
       >
         {showPhoto && (
@@ -297,14 +301,27 @@ export function SidebarTemplate({
       </div>
 
       {/* Main column */}
-      <div className="w-[66%] px-6">
+      <div 
+        className="w-[66%]"
+        style={{
+          paddingTop: customMargins ? `${customMargins.top}px` : '36px',
+          paddingBottom: customMargins ? `${customMargins.bottom}px` : '36px',
+          paddingLeft: customMargins ? `${customMargins.left}px` : '1.5rem',
+          paddingRight: customMargins ? `${customMargins.right}px` : '1.5rem',
+        }}
+      >
         <table className="w-full border-collapse">
           <thead className="print:table-header-group hidden">
-            <tr><th className="h-[36px] p-0 border-0"></th></tr>
+            <tr>
+              <th 
+                className="p-0 border-0" 
+                style={{ height: customMargins ? `${customMargins.top}px` : '36px' }}
+              ></th>
+            </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="p-0 border-0 py-6 print:py-0">
+              <td className="p-0 border-0">
         {mainOrder.map((section) => (
           <EditableSection key={section} id={section} className="mb-4 empty:hidden">
             {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (

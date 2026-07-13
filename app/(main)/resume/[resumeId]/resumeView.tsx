@@ -252,6 +252,8 @@ export default function ResumeView({
     hiddenSections?: string[];
     showIcons?: boolean;
     pageFormat?: string;
+    margins?: 'normal' | 'narrow' | 'custom';
+    customMargins?: { top: number; bottom: number; left: number; right: number };
   };
   resumeId: string;
 }) {
@@ -275,9 +277,17 @@ export default function ResumeView({
   const [pageFormat, setPageFormat] = useState<PageFormat>(
     initialResumeData.pageFormat === 'letter' ? 'letter' : 'a4'
   );
-  const [margins, setMargins] = useState<'normal' | 'narrow'>(
+  const [margins, setMargins] = useState<'normal' | 'narrow' | 'custom'>(
     initialResumeData.margins || 'normal'
   );
+  const [customMargins, setCustomMargins] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  }>(() => {
+    return initialResumeData.customMargins || { top: 36, bottom: 36, left: 32, right: 32 };
+  });
   const [editorMode, setEditorMode] = useState<'visual' | 'latex'>(
     initialResumeData.editorMode || 'visual'
   );
@@ -305,8 +315,27 @@ export default function ResumeView({
   const regenerateLatexRef = useRef<((templateId?: string) => void) | null>(null);
 
   const page = PAGE_FORMATS[pageFormat];
-  const pageMarginY = getPageMarginY(margins);
-  const pageGap = getPageGap(margins);
+  const resolvedMargins = useMemo(() => {
+    if (margins === 'narrow') {
+      return { top: 24, bottom: 24, left: 20, right: 20 };
+    }
+    if (margins === 'normal') {
+      return { top: 36, bottom: 36, left: 32, right: 32 };
+    }
+    const top = Number(customMargins?.top);
+    const bottom = Number(customMargins?.bottom);
+    const left = Number(customMargins?.left);
+    const right = Number(customMargins?.right);
+    return {
+      top: isNaN(top) ? 36 : top,
+      bottom: isNaN(bottom) ? 36 : bottom,
+      left: isNaN(left) ? 32 : left,
+      right: isNaN(right) ? 32 : right,
+    };
+  }, [margins, customMargins]);
+
+  const pageMarginY = resolvedMargins.top + resolvedMargins.bottom;
+  const pageGap = pageMarginY + 40;
   const contentPerPage = page.height - pageMarginY;
 
   const sensors = useSensors(
@@ -515,6 +544,7 @@ export default function ResumeView({
             pageFormat,
             editorMode,
             margins,
+            customMargins,
             updatedAt: new Date().toISOString(),
           })
         );
@@ -541,6 +571,7 @@ export default function ResumeView({
     pageFormat,
     editorMode,
     margins,
+    customMargins,
   ]);
 
   /* ------------------------------ data mutations ----------------------------- */
@@ -714,6 +745,7 @@ export default function ResumeView({
             pageFormat,
             editorMode,
             margins,
+            customMargins,
           }),
         });
         if (!response.ok) throw new Error('Failed to generate PDF');
@@ -803,7 +835,7 @@ export default function ResumeView({
                       <Label className="text-xs text-muted-foreground">Margins</Label>
                       <Select
                         value={margins}
-                        onValueChange={(value: 'normal' | 'narrow') => setMargins(value)}
+                        onValueChange={(value: 'normal' | 'narrow' | 'custom') => setMargins(value)}
                       >
                         <SelectTrigger className="h-9">
                           <SelectValue placeholder="Margins" />
@@ -811,8 +843,58 @@ export default function ResumeView({
                         <SelectContent>
                           <SelectItem value="normal">Normal</SelectItem>
                           <SelectItem value="narrow">Narrow</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {margins === 'custom' && (
+                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Top (px)</Label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="150"
+                              value={customMargins.top}
+                              onChange={(e) => setCustomMargins(prev => ({ ...prev, top: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Bottom (px)</Label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="150"
+                              value={customMargins.bottom}
+                              onChange={(e) => setCustomMargins(prev => ({ ...prev, bottom: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Left (px)</Label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="150"
+                              value={customMargins.left}
+                              onChange={(e) => setCustomMargins(prev => ({ ...prev, left: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Right (px)</Label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="150"
+                              value={customMargins.right}
+                              onChange={(e) => setCustomMargins(prev => ({ ...prev, right: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -1159,6 +1241,7 @@ export default function ResumeView({
                       sectionOrder={visibleSectionOrder}
                       showIcons={showIcons}
                       showPhoto={showPhoto}
+                      customMargins={resolvedMargins}
                     />
                   </SortableContext>
                 </DndContext>

@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ModernTemplate } from '@/components/resume/templates/Modern';
 import { MinimalTemplate } from '@/components/resume/templates/Minimal';
@@ -35,6 +35,27 @@ const DownloadContent = () => {
   const [sectionOrder, setSectionOrder] = useState<string[] | undefined>(undefined);
   const [showIcons, setShowIcons] = useState<boolean>(false);
   const [showPhoto, setShowPhoto] = useState<boolean>(false);
+  const [margins, setMargins] = useState<string | undefined>(undefined);
+  const [customMargins, setCustomMargins] = useState<any>(null);
+
+  const resolvedMargins = useMemo(() => {
+    if (margins === 'narrow') {
+      return { top: 24, bottom: 24, left: 20, right: 20 };
+    }
+    if (margins === 'normal') {
+      return { top: 36, bottom: 36, left: 32, right: 32 };
+    }
+    const top = Number(customMargins?.top);
+    const bottom = Number(customMargins?.bottom);
+    const left = Number(customMargins?.left);
+    const right = Number(customMargins?.right);
+    return {
+      top: isNaN(top) ? 36 : top,
+      bottom: isNaN(bottom) ? 36 : bottom,
+      left: isNaN(left) ? 32 : left,
+      right: isNaN(right) ? 32 : right,
+    };
+  }, [margins, customMargins]);
 
   useEffect(() => {
     const toBool = (v: unknown) => v === true || v === 'true';
@@ -62,6 +83,8 @@ const DownloadContent = () => {
       sectionOrder: searchParams.get('sectionOrder'),
       showIcons: searchParams.get('showIcons'),
       showPhoto: searchParams.get('showPhoto'),
+      margins: searchParams.get('margins'),
+      customMargins: searchParams.get('customMargins'),
     };
 
     const template = src.template as string | null;
@@ -76,6 +99,8 @@ const DownloadContent = () => {
         setSectionOrder(parse(src.sectionOrder));
         setShowIcons(toBool(src.showIcons));
         setShowPhoto(toBool(src.showPhoto));
+        setMargins((src.margins as string) || undefined);
+        setCustomMargins(parse(src.customMargins) || null);
       } catch (error) {
         console.error('Error parsing resume payload:', error);
       }
@@ -108,6 +133,7 @@ const DownloadContent = () => {
           sectionOrder={sectionOrder}
           showIcons={showIcons}
           showPhoto={showPhoto}
+          customMargins={resolvedMargins || undefined}
         />
       </div>
     </div>

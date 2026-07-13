@@ -15,7 +15,8 @@ interface PdfPayload {
     showIcons?: string | boolean;
     showPhoto?: string | boolean;
     pageFormat?: string;
-    margins?: 'normal' | 'narrow';
+    margins?: 'normal' | 'narrow' | 'custom';
+    customMargins?: { top: number; bottom: number; left: number; right: number };
 }
 
 async function launch(): Promise<Browser | BrowserCore> {
@@ -38,8 +39,21 @@ async function launch(): Promise<Browser | BrowserCore> {
 
 async function renderPdf(payload: PdfPayload) {
     const browser = await launch();
+    let pageError: Error | null = null;
     try {
         const page = await browser.newPage();
+
+        const pageFormat = payload.pageFormat === "letter" ? "letter" : "a4";
+        const width = pageFormat === "letter" ? 816 : 794;
+        const height = pageFormat === "letter" ? 1056 : 1123;
+        await page.setViewport({ width, height, deviceScaleFactor: 1 });
+
+        // Redirect page logs and errors to terminal for debugging
+        page.on('console', msg => console.log('PUPPETEER PAGE LOG:', msg.text()));
+        page.on('pageerror', (err: any) => {
+            console.error('PUPPETEER PAGE ERROR:', err?.message || err, err?.stack);
+            pageError = new Error(`Page error inside Puppeteer: ${err?.message || err}\n${err?.stack || ''}`);
+        });
 
         // Inject the resume payload as a page global so we never hit URL-length
         // limits — a profile photo (base64 data URL) can be tens of KB.
@@ -50,17 +64,33 @@ async function renderPdf(payload: PdfPayload) {
         await page.goto(`${process.env.BASE_URL}/resume/download`, {
             waitUntil: "networkidle0",
         });
+
+        if (pageError) throw pageError;
+
         await page.waitForSelector("#resume-content", { visible: true, timeout: 30000 });
+        
+        if (pageError) throw pageError;
+
         await page.evaluateHandle("document.fonts.ready");
 
-        const pageFormat = payload.pageFormat === "letter" ? "letter" : "a4";
-        const pageMargin = payload.margins === 'narrow' ? '24px' : '36px';
+        let topMargin = '36px';
+        let bottomMargin = '36px';
+        if (payload.margins === 'narrow') {
+            topMargin = '24px';
+            bottomMargin = '24px';
+        } else if (payload.margins === 'custom' && payload.customMargins) {
+            const topVal = Number(payload.customMargins.top);
+            const bottomVal = Number(payload.customMargins.bottom);
+            topMargin = `${isNaN(topVal) ? 36 : topVal}px`;
+            bottomMargin = `${isNaN(bottomVal) ? 36 : bottomVal}px`;
+        }
+
         const pdf = await page.pdf({
             format: pageFormat,
             printBackground: true,
             margin: payload.template === 'sidebar' 
                 ? { top: "0px", right: "0px", bottom: "0px", left: "0px" }
-                : { top: pageMargin, right: "0px", bottom: pageMargin, left: "0px" },
+                : { top: topMargin, right: "0px", bottom: bottomMargin, left: "0px" },
         });
         return Buffer.from(pdf);
     } finally {
@@ -85,9 +115,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: "No resume data provided" }, { status: 400 });
         }
         return pdfResponse(await renderPdf(payload));
-    } catch (error) {
+    } catch (error: any) {
         console.error("PDF generation error:", error);
-        return NextResponse.json({ message: "Error generating PDF" }, { status: 500 });
+        return NextResponse.json({ 
+            message: "Error generating PDF", 
+            error: error?.message || String(error),
+            stack: error?.stack || null
+        }, { status: 500 });
     }
 }
 

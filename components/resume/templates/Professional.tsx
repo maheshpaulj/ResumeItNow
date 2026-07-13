@@ -24,12 +24,14 @@ export function ProfessionalTemplate({
   ],
   showIcons,
   showPhoto,
+  customMargins,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
   showPhoto?: boolean;
+  customMargins?: { top: number; bottom: number; left: number; right: number };
 }) {
   // Memoize accentColor directly
   const colors = useMemo(() => ({
@@ -60,7 +62,16 @@ export function ProfessionalTemplate({
   };
 
   return (
-    <div className={`w-full mx-auto bg-white px-6 py-4`} style={{ fontFamily }}>
+    <div 
+      className="w-full mx-auto bg-white" 
+      style={{ 
+        fontFamily,
+        paddingTop: customMargins ? `${customMargins.top}px` : '1rem',
+        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1rem',
+        paddingLeft: customMargins ? `${customMargins.left}px` : '1.5rem',
+        paddingRight: customMargins ? `${customMargins.right}px` : '1.5rem',
+      }}
+    >
       {/* Personal Details Section */}
       <div className="mb-8 break-inside-avoid">
         <div className="flex justify-between w-full gap-4">

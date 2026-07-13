@@ -2,6 +2,17 @@
 import type { TemplateProps } from './types';
 import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
 import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
+import { Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { FaLinkedin, FaGithub } from 'react-icons/fa6';
+
+const contactIcons = {
+  location: MapPin,
+  phone: Phone,
+  email: Mail,
+  linkedin: FaLinkedin,
+  github: FaGithub,
+  website: Globe,
+};
 
 // Dense, ATS-friendly single-column template with uppercase rule headers.
 export function CompactTemplate({
@@ -20,7 +31,9 @@ export function CompactTemplate({
     'languages',
     'customSections',
   ],
-  showPhoto,
+  showIcons = true,
+  showPhoto = false,
+  customMargins,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
@@ -53,7 +66,16 @@ export function CompactTemplate({
   };
 
   return (
-    <div className="w-full mx-auto bg-white text-gray-800 px-8 py-6 text-[13px] leading-snug" style={{ fontFamily }}>
+    <div 
+      className="w-full mx-auto bg-white text-gray-800 text-[13px] leading-snug" 
+      style={{ 
+        fontFamily,
+        paddingTop: customMargins ? `${customMargins.top}px` : '1.5rem',
+        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1.5rem',
+        paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
+        paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
+      }}
+    >
       {/* Header */}
       <div className="text-center mb-4">
         {showPhoto && (
@@ -83,15 +105,17 @@ export function CompactTemplate({
             })}
           </div>
         )}
-        <div className="mt-1 text-xs text-gray-600 flex flex-wrap justify-center items-center gap-x-2 gap-y-0.5">
+        <div className="mt-1 text-xs text-gray-600 flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
           {([
             ['location', 'Location', ''],
             ['phone', 'Phone', 'phone'],
             ['email', 'Email', 'mail'],
-          ] as const).map(([field, label, type], i) =>
-            (isEditing || resumeData.personalDetails[field]) ? (
-              <span key={field} className="inline-flex items-center gap-2">
-                {i > 0 && <span className="text-gray-400">·</span>}
+          ] as const).map(([field, label, type]) => {
+            if (!isEditing && !resumeData.personalDetails[field]) return null;
+            const Icon = contactIcons[field];
+            return (
+              <span key={field} className="inline-flex items-center gap-1">
+                {showIcons && Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-gray-500" />}
                 {renderInput({
                   value: resumeData.personalDetails[field] || '',
                   onChange: (v) => updateField('personalDetails', null, field, v),
@@ -99,17 +123,20 @@ export function CompactTemplate({
                   ariaLabel: label,
                 })}
               </span>
-            ) : null
-          )}
+            );
+          })}
         </div>
-        <div className="mt-0.5 text-xs flex flex-wrap justify-center gap-x-3" style={{ color: accentColor }}>
+        <div className="mt-1 text-xs flex flex-wrap justify-center gap-x-4 gap-y-1" style={{ color: accentColor }}>
           {([
             ['linkedin', 'LinkedIn'],
             ['github', 'GitHub'],
             ['website', 'Website'],
-          ] as const).map(([field, label]) =>
-            (isEditing || resumeData.personalDetails[field]) ? (
-              <span key={field}>
+          ] as const).map(([field, label]) => {
+            if (!isEditing && !resumeData.personalDetails[field]) return null;
+            const Icon = contactIcons[field];
+            return (
+              <span key={field} className="inline-flex items-center gap-1">
+                {showIcons && Icon && <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: accentColor }} />}
                 {renderInput({
                   value: resumeData.personalDetails[field] || '',
                   onChange: (v) => updateField('personalDetails', null, field, v),
@@ -118,8 +145,8 @@ export function CompactTemplate({
                   ariaLabel: label,
                 })}
               </span>
-            ) : null
-          )}
+            );
+          })}
         </div>
       </div>
 

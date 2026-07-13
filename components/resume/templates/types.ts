@@ -97,4 +97,5 @@ export interface TemplateProps {
     field: string,
     value: string
   ) => void;
+  customMargins?: { top: number; bottom: number; left: number; right: number };
 }
