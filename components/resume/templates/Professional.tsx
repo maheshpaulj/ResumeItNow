@@ -231,7 +231,7 @@ export function ProfessionalTemplate({
                         textColor: 'text-gray-600',
                         ariaLabel: 'Start date',
                       })}
-                      <span>-</span>
+                      {((isEditing && (experience.startDate || experience.endDate)) || (experience.startDate && experience.endDate)) && <span>-</span>}
                       {renderInput({
                         value: experience.endDate,
                         onChange: (value) => updateField('workExperience', index, 'endDate', value),
@@ -358,7 +358,7 @@ export function ProfessionalTemplate({
                         textColor: 'text-gray-600',
                         ariaLabel: 'Start date',
                       })}
-                      {edu.startDate && <span>-</span>}
+                      {((isEditing && (edu.startDate || edu.endDate)) || (edu.startDate && edu.endDate)) && <span>-</span>}
                       {renderInput({
                         value: edu.endDate,
                         onChange: (value) => updateField('education', index, 'endDate', value),

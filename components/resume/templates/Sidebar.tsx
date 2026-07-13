@@ -358,7 +358,7 @@ export function SidebarTemplate({
                           type: 'date',
                           ariaLabel: 'Start date',
                         })}
-                        {(isEditing || exp.endDate) && <span>–</span>}
+                        {((isEditing && (exp.startDate || exp.endDate)) || (exp.startDate && exp.endDate)) && <span>–</span>}
                         {renderInput({
                           value: exp.endDate,
                           onChange: (v) => updateField('workExperience', index, 'endDate', v),
@@ -456,7 +456,7 @@ export function SidebarTemplate({
                           type: 'date',
                           ariaLabel: 'Start date',
                         })}
-                        {(isEditing || edu.endDate) && <span>–</span>}
+                        {((isEditing && (edu.startDate || edu.endDate)) || (edu.startDate && edu.endDate)) && <span>–</span>}
                         {renderInput({
                           value: edu.endDate,
                           onChange: (v) => updateField('education', index, 'endDate', v),
