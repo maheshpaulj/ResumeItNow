@@ -39,6 +39,7 @@ export default function CreateResumePage() {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [pendingData, setPendingData] = useState<ResumeData | null>(null);
   const [pendingTitle, setPendingTitle] = useState<string>('');
+  const [importProgress, setImportProgress] = useState(0);
   const importing = busy === 'import';
 
   const createResume = async (data: ResumeData, title: string) => {
@@ -73,7 +74,18 @@ export default function CreateResumePage() {
       });
       return;
     }
+    setImportProgress(5);
     setBusy('import');
+    const interval = setInterval(() => {
+      setImportProgress((prev) => {
+        if (prev < 35) return prev + Math.floor(Math.random() * 8) + 4;
+        if (prev < 65) return prev + Math.floor(Math.random() * 5) + 2;
+        if (prev < 88) return prev + Math.floor(Math.random() * 2) + 1;
+        if (prev < 96) return prev + 0.4;
+        return prev;
+      });
+    }, 250);
+
     try {
       const formData = new FormData();
       formData.append('resume', file);
@@ -85,11 +97,18 @@ export default function CreateResumePage() {
       const { resume } = await res.json();
       const data = normalizeImportedResume(resume);
       const title = data.jobTitle || data.personalDetails.fullName || 'Imported Resume';
+      
+      clearInterval(interval);
+      setImportProgress(100);
+      await new Promise((r) => setTimeout(r, 300));
+      
       setPendingData(data);
       setPendingTitle(title);
       setBusy(null);
       setMode('template');
     } catch (error) {
+      clearInterval(interval);
+      setImportProgress(0);
       console.error('Error importing resume:', error);
       toast({
         title: 'Import failed',
@@ -110,7 +129,18 @@ export default function CreateResumePage() {
       });
       return;
     }
+    setImportProgress(5);
     setBusy('import');
+    const interval = setInterval(() => {
+      setImportProgress((prev) => {
+        if (prev < 35) return prev + Math.floor(Math.random() * 8) + 4;
+        if (prev < 65) return prev + Math.floor(Math.random() * 5) + 2;
+        if (prev < 88) return prev + Math.floor(Math.random() * 2) + 1;
+        if (prev < 96) return prev + 0.4;
+        return prev;
+      });
+    }, 250);
+
     try {
       const res = await fetch('/api/import-resume', {
         method: 'POST',
@@ -124,11 +154,18 @@ export default function CreateResumePage() {
       const { resume } = await res.json();
       const data = normalizeImportedResume(resume);
       const title = data.jobTitle || data.personalDetails.fullName || 'Imported Resume';
+      
+      clearInterval(interval);
+      setImportProgress(100);
+      await new Promise((r) => setTimeout(r, 300));
+
       setPendingData(data);
       setPendingTitle(title);
       setBusy(null);
       setMode('template');
     } catch (error) {
+      clearInterval(interval);
+      setImportProgress(0);
       console.error('Error importing from URL:', error);
       toast({
         title: 'Import failed',
@@ -307,7 +344,7 @@ export default function CreateResumePage() {
                         pendingTitle
                       );
                       toast({ title: 'Success', description: 'Resume created successfully.' });
-                      router.push(`/resume/\${resumeId}`);
+                      router.push(`/resume/${resumeId}`);
                     } catch (error) {
                       toast({
                         title: 'Error',
@@ -321,10 +358,13 @@ export default function CreateResumePage() {
                     busy ? 'pointer-events-none opacity-50' : ''
                   }`}
                 >
-                  <div className="aspect-[1/1.414] bg-muted/30 p-2">
-                    <div className="flex h-full w-full items-center justify-center rounded border bg-white shadow-sm transition-transform group-hover:scale-[1.02]">
-                      <span className="text-sm font-medium text-muted-foreground">{t.label}</span>
+                  <div className="aspect-[1/1.414] bg-muted/20 p-2">
+                    <div className="relative h-full w-full overflow-hidden rounded border bg-white shadow-sm transition-transform group-hover:scale-[1.02] p-2 flex flex-col gap-2">
+                      <TemplatePreview id={t.id} />
                     </div>
+                  </div>
+                  <div className="p-2.5 text-center border-t bg-card text-xs font-semibold text-card-foreground select-none">
+                    {t.label}
                   </div>
                 </Card>
               ))}
@@ -340,78 +380,100 @@ export default function CreateResumePage() {
           >
             <Card className="border-2 border-violet-500/40">
               <CardContent className="p-6 sm:p-8">
-                <button
-                  onClick={() => !importing && setMode('choose')}
-                  disabled={importing}
-                  className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
+                {importing ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-5">
+                    <div className="relative flex items-center justify-center">
+                      <div className="h-14 w-14 rounded-full border-4 border-violet-100 border-t-violet-500 animate-spin" />
+                      <Sparkles className="absolute h-5 w-5 text-violet-500 animate-pulse" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-lg text-foreground">Analyzing with AI</p>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        Our extraction engine is parsing your {tab === 'linkedin' ? 'LinkedIn profile' : 'resume'} and structuring your work history. This may take up to 20 seconds.
+                      </p>
+                    </div>
+                    <div className="w-full max-w-xs bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
+                      <div 
+                        className="bg-gradient-to-r from-violet-500 to-indigo-600 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${importProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs font-mono text-violet-600 dark:text-violet-400 font-bold">
+                      {Math.round(importProgress)}%
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => !importing && setMode('choose')}
+                      disabled={importing}
+                      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Back
+                    </button>
 
-                <div className="mb-5 flex gap-2">
-                  <button
-                    onClick={() => !importing && setTab('pdf')}
-                    disabled={importing}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      tab === 'pdf' ? 'bg-violet-500 text-white' : 'bg-muted hover:bg-muted/70'
-                    }`}
-                  >
-                    <FileUp className="h-4 w-4" /> Resume PDF
-                  </button>
-                  <button
-                    onClick={() => !importing && setTab('linkedin')}
-                    disabled={importing}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      tab === 'linkedin' ? 'bg-[#0a66c2] text-white' : 'bg-muted hover:bg-muted/70'
-                    }`}
-                  >
-                    <FaLinkedin className="h-4 w-4" /> LinkedIn
-                  </button>
-                </div>
+                    <div className="mb-5 flex gap-2">
+                      <button
+                        onClick={() => !importing && setTab('pdf')}
+                        disabled={importing}
+                        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          tab === 'pdf' ? 'bg-violet-500 text-white' : 'bg-muted hover:bg-muted/70'
+                        }`}
+                      >
+                        <FileUp className="h-4 w-4" /> Resume PDF
+                      </button>
+                      <button
+                        onClick={() => !importing && setTab('linkedin')}
+                        disabled={importing}
+                        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          tab === 'linkedin' ? 'bg-[#0a66c2] text-white' : 'bg-muted hover:bg-muted/70'
+                        }`}
+                      >
+                        <FaLinkedin className="h-4 w-4" /> LinkedIn
+                      </button>
+                    </div>
 
-                <div>
-                  <motion.div
-                    key={tab}
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    {tab === 'linkedin' ? (
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium">Your LinkedIn profile URL</label>
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          <input
-                            type="url"
-                            value={linkedinUrl}
-                            onChange={(e) => setLinkedinUrl(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !importing && handleImportUrl()}
-                            disabled={importing}
-                            placeholder="https://www.linkedin.com/in/your-handle"
-                            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-[#0a66c2] disabled:opacity-60"
-                          />
-                          <Button
-                            onClick={handleImportUrl}
-                            disabled={importing || !linkedinUrl.trim()}
-                            className="gap-2 bg-[#0a66c2] text-white hover:bg-[#08508f]"
-                          >
-                            {importing ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-4 w-4" />
-                            )}
-                            {importing ? 'Importing…' : 'Import'}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Make sure your profile is public. If LinkedIn blocks the read, use the
-                          Resume PDF tab (Profile → More → Save to PDF).
-                        </p>
-                      </div>
-                    ) : (
-                      <Dropzone />
-                    )}
-                  </motion.div>
-                </div>
+                    <div>
+                      <motion.div
+                        key={tab}
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        {tab === 'linkedin' ? (
+                          <div className="space-y-3">
+                            <label className="text-sm font-medium">Your LinkedIn profile URL</label>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <input
+                                type="url"
+                                value={linkedinUrl}
+                                onChange={(e) => setLinkedinUrl(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !importing && handleImportUrl()}
+                                disabled={importing}
+                                placeholder="https://www.linkedin.com/in/your-handle"
+                                className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-[#0a66c2] disabled:opacity-60"
+                              />
+                              <Button
+                                onClick={handleImportUrl}
+                                disabled={importing || !linkedinUrl.trim()}
+                                className="gap-2 bg-[#0a66c2] text-white hover:bg-[#08508f]"
+                              >
+                                <Sparkles className="h-4 w-4" />
+                                Import
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Make sure your profile is public. If LinkedIn blocks the read, use the
+                              Resume PDF tab (Profile → More → Save to PDF).
+                            </p>
+                          </div>
+                        ) : (
+                          <Dropzone />
+                        )}
+                      </motion.div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -442,4 +504,173 @@ export default function CreateResumePage() {
       <Toaster />
     </div>
   );
+}
+
+function TemplatePreview({ id }: { id: string }) {
+  if (id === 'modern') {
+    return (
+      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none opacity-85">
+        {/* Header */}
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="h-1.5 w-1/2 rounded-full bg-slate-800" />
+          <div className="h-0.5 w-1/3 rounded-full bg-slate-400" />
+        </div>
+        {/* Sections */}
+        <div className="mt-2 space-y-2">
+          {/* Section 1 */}
+          <div className="space-y-0.5">
+            <div className="h-1 w-1/4 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-full bg-slate-200" />
+            <div className="space-y-0.5 pl-0.5">
+              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
+              <div className="h-0.5 w-3/4 rounded-full bg-slate-300" />
+            </div>
+          </div>
+          {/* Section 2 */}
+          <div className="space-y-0.5">
+            <div className="h-1 w-1/4 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-full bg-slate-200" />
+            <div className="space-y-0.5 pl-0.5">
+              <div className="h-0.5 w-2/3 rounded-full bg-slate-300" />
+              <div className="h-0.5 w-4/5 rounded-full bg-slate-300" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (id === 'minimal') {
+    return (
+      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none p-0.5 opacity-85">
+        {/* Header */}
+        <div className="flex flex-col items-start gap-0.5">
+          <div className="h-1.5 w-2/5 rounded-full bg-slate-800" />
+          <div className="h-0.5 w-1/2 rounded-full bg-slate-400" />
+        </div>
+        {/* Sections */}
+        <div className="mt-2 space-y-2.5">
+          {/* Section 1 */}
+          <div className="space-y-0.5">
+            <div className="h-1 w-1/3 rounded-full bg-slate-700" />
+            <div className="space-y-0.5">
+              <div className="h-0.5 w-11/12 rounded-full bg-slate-300" />
+              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
+            </div>
+          </div>
+          {/* Section 2 */}
+          <div className="space-y-0.5">
+            <div className="h-1 w-1/3 rounded-full bg-slate-700" />
+            <div className="space-y-0.5">
+              <div className="h-0.5 w-4/5 rounded-full bg-slate-300" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (id === 'professional') {
+    return (
+      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none opacity-85">
+        {/* Header */}
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="h-2 w-3/5 rounded-full bg-slate-800" />
+          <div className="h-0.5 w-2/5 rounded-full bg-slate-400" />
+        </div>
+        {/* Sections */}
+        <div className="mt-2 space-y-2">
+          {/* Section 1 */}
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <div className="h-1 w-1/4 rounded-full bg-slate-700" />
+              <div className="h-[0.5px] flex-1 bg-violet-400" />
+            </div>
+            <div className="space-y-0.5 pl-0.5">
+              <div className="h-0.5 w-full rounded-full bg-slate-300" />
+              <div className="h-0.5 w-11/12 rounded-full bg-slate-300" />
+            </div>
+          </div>
+          {/* Section 2 */}
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <div className="h-1 w-1/4 rounded-full bg-slate-700" />
+              <div className="h-[0.5px] flex-1 bg-violet-400" />
+            </div>
+            <div className="space-y-0.5 pl-0.5">
+              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (id === 'compact') {
+    return (
+      <div className="flex h-full w-full flex-col gap-0.5 text-[5px] select-none pointer-events-none p-0.5 opacity-85">
+        {/* Header */}
+        <div className="flex justify-between items-center pb-0.5 border-b border-slate-200">
+          <div className="h-1.5 w-1/3 rounded-full bg-slate-800" />
+          <div className="h-0.5 w-1/3 rounded-full bg-slate-400" />
+        </div>
+        {/* High Density Rows */}
+        <div className="space-y-1.5 mt-1.5">
+          <div className="space-y-0.5">
+            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
+            <div className="h-[0.5px] w-11/12 rounded-full bg-slate-300" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
+            <div className="h-[0.5px] w-3/4 rounded-full bg-slate-300" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-4/5 rounded-full bg-slate-300" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (id === 'sidebar') {
+    return (
+      <div className="flex h-full w-full -m-2 text-[5px] select-none pointer-events-none opacity-85">
+        {/* Sidebar */}
+        <div className="w-1/3 bg-slate-100 dark:bg-slate-800/60 p-1 flex flex-col gap-1 border-r border-slate-200">
+          <div className="h-1 w-full rounded-full bg-slate-700" />
+          <div className="space-y-0.5">
+            <div className="h-0.5 w-3/4 rounded-full bg-slate-400" />
+            <div className="h-0.5 w-5/6 rounded-full bg-slate-400" />
+          </div>
+          <div className="space-y-0.5 mt-1.5">
+            <div className="h-0.5 w-2/3 rounded-full bg-slate-600" />
+            <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
+            <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
+          </div>
+        </div>
+        {/* Main Body */}
+        <div className="flex-1 p-1 flex flex-col gap-1.5">
+          <div className="h-2 w-2/3 rounded-full bg-slate-800" />
+          <div className="space-y-0.5">
+            <div className="h-0.5 w-1/3 rounded-full bg-slate-600" />
+            <div className="space-y-[0.5px]">
+              <div className="h-[0.5px] w-11/12 rounded-full bg-slate-300" />
+              <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
+            </div>
+          </div>
+          <div className="space-y-0.5 mt-0.5">
+            <div className="h-0.5 w-1/3 rounded-full bg-slate-600" />
+            <div className="space-y-[0.5px]">
+              <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

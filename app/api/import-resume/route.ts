@@ -32,7 +32,7 @@ async function extractResume(text: string) {
   const content = await openRouterChat(
     [
       { role: "system", content: EXTRACTION_PROMPT },
-      { role: "user", content: text.slice(0, 24000) },
+      { role: "user", content: text.slice(0, 12000) },
     ],
     { jsonMode: true }
   );
