@@ -69,29 +69,21 @@ async function renderPdf(payload: PdfPayload) {
         if (pageError) throw pageError;
 
         await page.waitForSelector("#resume-content", { visible: true, timeout: 30000 });
-        
+
         if (pageError) throw pageError;
 
         await page.evaluateHandle("document.fonts.ready");
 
-        let topMargin = '36px';
-        let bottomMargin = '36px';
-        if (payload.margins === 'narrow') {
-            topMargin = '24px';
-            bottomMargin = '24px';
-        } else if (payload.margins === 'custom' && payload.customMargins) {
-            const topVal = Number(payload.customMargins.top);
-            const bottomVal = Number(payload.customMargins.bottom);
-            topMargin = `${isNaN(topVal) ? 36 : topVal}px`;
-            bottomMargin = `${isNaN(bottomVal) ? 36 : bottomVal}px`;
-        }
+        // Wait until the page has forced its page breaks (same algorithm as the
+        // editor) so the exported pages match the on-screen pages 1:1.
+        await page
+            .waitForFunction("window.__PAGINATED__ === true", { timeout: 15000 })
+            .catch(() => { /* fall back to native pagination if it never flags */ });
 
         const pdf = await page.pdf({
             format: pageFormat,
             printBackground: true,
-            margin: payload.template === 'sidebar' 
-                ? { top: "0px", right: "0px", bottom: "0px", left: "0px" }
-                : { top: topMargin, right: "0px", bottom: bottomMargin, left: "0px" },
+            margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
         });
         return Buffer.from(pdf);
     } finally {

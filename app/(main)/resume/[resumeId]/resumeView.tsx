@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { RESUME_FONTS_HREF } from '@/lib/fonts';
+import { paginate, applyManualBreaks } from '@/lib/paginate';
 import type { ResumeData } from './types';
 import { useSession } from 'next-auth/react';
 import { ModernTemplate } from '@/components/resume/templates/Modern';
@@ -274,6 +276,9 @@ export default function ResumeView({
   );
   const [showIcons, setShowIcons] = useState(initialResumeData.showIcons ?? true);
   const [showPhoto, setShowPhoto] = useState(initialResumeData.showPhoto ?? false);
+  const [pageBreaks, setPageBreaks] = useState<string[]>(
+    (initialResumeData as { pageBreaks?: string[] }).pageBreaks || []
+  );
   const [pageFormat, setPageFormat] = useState<PageFormat>(
     initialResumeData.pageFormat === 'letter' ? 'letter' : 'a4'
   );
@@ -396,79 +401,9 @@ export default function ResumeView({
     const content = pageRef.current;
     if (!content) return;
 
-    // Reset spacers from the previous pass
-    content.querySelectorAll<HTMLElement>('[data-page-spacer]').forEach((el) => {
-      el.style.marginTop = el.dataset.origMt || '';
-      delete el.dataset.pageSpacer;
-      delete el.dataset.origMt;
-    });
-
-    // offsetTop-based measurement: unlike getBoundingClientRect it ignores CSS
-    // transforms, so the zoom scale and dnd-kit's drop-settling animations can
-    // never corrupt the page math.
-    const topOf = (el: HTMLElement) => {
-      let y = 0;
-      let node: HTMLElement | null = el;
-      while (node && node !== content) {
-        y += node.offsetTop;
-        node = node.offsetParent as HTMLElement | null;
-      }
-      return y;
-    };
-    const bottomOf = (el: HTMLElement) => topOf(el) + el.offsetHeight;
-
-    const candidates = Array.from(
-      content.querySelectorAll<HTMLElement>('.break-inside-avoid, [data-rb="header"]')
-    ).sort((a, b) => topOf(a) - topOf(b));
-
-    const starts: number[] = [0];
-    let limit = contentPerPage;
-    let i = 0;
-
-    for (let guard = 0; guard < 40; guard++) {
-      if (limit >= content.scrollHeight - 8) break;
-      while (i < candidates.length && bottomOf(candidates[i]) <= limit + 0.5) i++;
-      if (i >= candidates.length) break;
-
-      let target = candidates[i];
-      // Keep a section header together with the block that follows it
-      const prev = i > 0 ? candidates[i - 1] : null;
-      if (
-        prev &&
-        prev.dataset.rb === 'header' &&
-        !prev.dataset.pageSpacer &&
-        topOf(prev) < limit &&
-        topOf(target) - bottomOf(prev) < 40
-      ) {
-        target = prev;
-        i--;
-      }
-
-      const blockH = bottomOf(target) - topOf(target);
-      if (topOf(target) < limit && blockH > contentPerPage) {
-        // taller than a page — let it split naturally
-        starts.push(limit);
-        limit += contentPerPage;
-        continue;
-      }
-
-      const push = Math.max(0, limit + pageGap - topOf(target));
-      if (push > 0) {
-        const base = parseFloat(getComputedStyle(target).marginTop) || 0;
-        target.dataset.origMt = target.style.marginTop || '';
-        target.dataset.pageSpacer = '1';
-        target.style.marginTop = `${base + push}px`;
-        // adjacent margins collapse and eat part of the push — correct once
-        const shortfall = limit + pageGap - topOf(target);
-        if (shortfall > 0.5) {
-          target.style.marginTop = `${base + push + shortfall}px`;
-        }
-      }
-
-      const newTop = topOf(target);
-      starts.push(newTop);
-      limit = newTop + contentPerPage;
-    }
+    applyManualBreaks(content, pageBreaks);
+    const starts = paginate(content, { contentPerPage, gap: pageGap, mode: 'push' });
+    const limit = starts[starts.length - 1] + contentPerPage;
 
     setPageStarts((prev) =>
       prev.length === starts.length && prev.every((v, k) => Math.abs(v - starts[k]) < 0.5)
@@ -476,7 +411,7 @@ export default function ResumeView({
         : starts
     );
     setCanvasMin((prev) => (Math.abs(prev - limit) < 0.5 ? prev : limit));
-  }, [contentPerPage, page.width]);
+  }, [contentPerPage, pageGap, pageBreaks]);
 
   useEffect(() => {
     repaginateRef.current = repaginate;
@@ -545,6 +480,7 @@ export default function ResumeView({
             editorMode,
             margins,
             customMargins,
+            pageBreaks,
             updatedAt: new Date().toISOString(),
           })
         );
@@ -572,6 +508,7 @@ export default function ResumeView({
     editorMode,
     margins,
     customMargins,
+    pageBreaks,
   ]);
 
   /* ------------------------------ data mutations ----------------------------- */
@@ -661,6 +598,12 @@ export default function ResumeView({
     [hiddenSections]
   );
 
+  const toggleBreak = useCallback((key: string) => {
+    setPageBreaks((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
+
   const editorApi = useMemo(
     () => ({
       editable: true,
@@ -671,8 +614,10 @@ export default function ResumeView({
       moveSection,
       activeKey,
       setActiveKey,
+      pageBreaks,
+      toggleBreak,
     }),
-    [addEntry, removeEntry, moveEntry, hideSection, moveSection, activeKey]
+    [addEntry, removeEntry, moveEntry, hideSection, moveSection, activeKey, pageBreaks, toggleBreak]
   );
 
   // Central hover tracker: the closest ancestor with a data-rbkey wins, so only
@@ -746,6 +691,7 @@ export default function ResumeView({
             editorMode,
             margins,
             customMargins,
+            pageBreaks,
           }),
         });
         if (!response.ok) throw new Error('Failed to generate PDF');
@@ -779,6 +725,10 @@ export default function ResumeView({
 
   return (
     <div className={`w-full flex flex-col items-center min-h-screen ${editorMode === 'latex' ? 'bg-background py-4 px-4' : 'bg-gray-100 dark:bg-gray-950 py-4 px-2 sm:px-6'}`}>
+      {/* Load all template web fonts so the canvas renders the exact same
+          typography as the exported PDF (React 19 hoists this into <head>). */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href={RESUME_FONTS_HREF} />
       {/* Toolbar */}
       <Card className={`w-full print:hidden z-40 ${editorMode === 'latex' ? 'rounded-none border-t-0 border-x-0 border-b border-border bg-card text-card-foreground mb-6' : 'mb-6 max-w-5xl sticky top-[4.5rem] backdrop-blur supports-[backdrop-filter]:bg-card/95'}`}>
         <CardContent className="p-2.5 sm:p-3">
@@ -1169,7 +1119,7 @@ export default function ResumeView({
             width: (page.width + 96) * scale,
             paddingLeft: 48 * scale,
             paddingRight: 48 * scale,
-            height: pageHeight ? (pageHeight + pageMarginY) * scale : undefined,
+            height: pageHeight ? pageHeight * scale : undefined,
           }}
           className="mx-auto"
         >
@@ -1178,25 +1128,27 @@ export default function ResumeView({
               width: page.width,
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
-              paddingTop: pageMarginY / 2,
-              paddingBottom: pageMarginY / 2,
             }}
             className="relative"
           >
             {/* Each page is its own sheet */}
-            {pageStarts.map((start, k) => (
-              <div
-                key={k}
-                aria-hidden
-                className="absolute inset-x-0 rounded-[3px] bg-white shadow-xl ring-1 ring-black/5 print:hidden"
-                style={{ top: start, height: contentPerPage + pageMarginY }}
-              />
-            ))}
+             {pageStarts.map((start, k) => {
+              const sheetTop = k === 0 ? 0 : start - resolvedMargins.top;
+              return (
+                <div
+                  key={k}
+                  aria-hidden
+                  className="absolute inset-x-0 rounded-[3px] bg-white shadow-xl ring-1 ring-black/5 print:hidden"
+                  style={{ top: sheetTop, height: contentPerPage + pageMarginY }}
+                />
+              );
+            })}
 
             {/* Gray gaps between sheets, with page labels */}
             {pageStarts.slice(1).map((start, k) => {
               const coverTop = pageStarts[k] + contentPerPage + pageMarginY;
-              const coverH = start - coverTop;
+              const nextSheetTop = start - resolvedMargins.top;
+              const coverH = nextSheetTop - coverTop;
               if (coverH < 8) return null;
               return (
                 <div

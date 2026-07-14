@@ -34,12 +34,15 @@ export function CompactTemplate({
   showIcons = true,
   showPhoto = false,
   customMargins,
+  isPrint,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
   sectionOrder?: string[];
   showIcons?: boolean;
   showPhoto?: boolean;
+  customMargins?: { top: number; bottom: number; left: number; right: number };
+  isPrint?: boolean;
 }) {
 
   const renderInput = useRenderInput(isEditing);
@@ -70,8 +73,8 @@ export function CompactTemplate({
       className="w-full mx-auto bg-white text-gray-800 text-[13px] leading-snug" 
       style={{ 
         fontFamily,
-        paddingTop: customMargins ? `${customMargins.top}px` : '1.5rem',
-        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1.5rem',
+        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
+        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
         paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
         paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
@@ -170,8 +173,8 @@ export function CompactTemplate({
             <div>
               <SectionHeader title="Experience" />
               {resumeData.workExperience.map((exp, index) => (
-                <div key={index} className="relative group/entry mb-2 last:mb-0 break-inside-avoid"><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
-                  <div className="flex justify-between items-baseline">
+                <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:workExperience:${index}`}><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
+                  <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
                     <div className="font-semibold">
                       {renderInput({
                         value: exp.jobTitle,
@@ -232,8 +235,8 @@ export function CompactTemplate({
             <div>
               <SectionHeader title="Projects" />
               {resumeData.projects.map((project, index) => (
-                <div key={index} className="relative group/entry mb-2 last:mb-0 break-inside-avoid"><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
-                  <div className="flex justify-between items-baseline">
+                <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
+                  <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
                     <span className="font-semibold">
                       {renderInput({
                         value: project.projectName,
@@ -269,8 +272,8 @@ export function CompactTemplate({
             <div>
               <SectionHeader title="Education" />
               {resumeData.education.map((edu, index) => (
-                <div key={index} className="relative group/entry mb-1.5 last:mb-0 break-inside-avoid"><EntryChrome section="education" index={index} count={resumeData.education.length} />
-                  <div className="flex justify-between items-baseline">
+                <div key={index} className="relative group/entry mb-1.5 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
+                  <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
                     <div>
                       <span className="font-semibold">
                         {renderInput({
@@ -345,7 +348,7 @@ export function CompactTemplate({
               <SectionHeader title="Skills" />
               <div className="space-y-0.5">
                 {resumeData.skills.map((skill, index) => (
-                  <div key={index} className="relative group/entry break-inside-avoid"><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
+                  <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
                     {isEditing && (
                       <div className="absolute right-0 top-0 z-10">
                         <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', index, 'skillType', t)} />
@@ -385,7 +388,7 @@ export function CompactTemplate({
             <div>
               <SectionHeader title="Certifications" />
               {resumeData.certifications.map((cert, index) => (
-                <div key={index} className="relative group/entry flex justify-between items-baseline mb-1 last:mb-0 break-inside-avoid"><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
+                <div key={index} className="relative group/entry flex justify-between items-baseline mb-1 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                   <div>
                     <span className="font-semibold">
                       {renderInput({
@@ -449,8 +452,10 @@ export function CompactTemplate({
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
               {resumeData.customSections.map((custom, idx) => (
-                <div key={idx} className="relative group/entry mb-2 last:mb-0 break-inside-avoid"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <SectionHeader title={custom.sectionTitle} />
+                <div key={idx} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
+                  <div className="break-inside-avoid" data-rb="entry-header">
+                    <SectionHeader title={custom.sectionTitle} />
+                  </div>
                   <div className="text-gray-700">
                     {renderInput({
                       value: custom.content,

@@ -81,7 +81,6 @@ body {
 @media print {
   @page {
     size: auto;
-    margin: 0;
   }
   nav,
   footer {

@@ -203,7 +203,7 @@ export function SidebarTemplate({
                 <SidebarHeader title="Skills" />
                 <div className="space-y-1.5 text-xs">
                   {resumeData.skills.map((skill, index) => (
-                    <div key={index} className="relative group/entry break-inside-avoid"><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
+                    <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
                     {isEditing && (
                       <div className="absolute right-0 top-0 z-10">
                         <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', index, 'skillType', t)} />
@@ -243,7 +243,7 @@ export function SidebarTemplate({
                 <SidebarHeader title="Languages" />
                 <div className="space-y-1 text-xs">
                   {resumeData.languages.map((language, index) => (
-                    <div key={index} className="relative group/entry flex justify-between break-inside-avoid"><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
+                    <div key={index} className="relative group/entry flex justify-between break-inside-avoid" data-rbkey={`e:languages:${index}`}><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
                       <span className="font-semibold">
                         {renderInput({
                           value: language.language,
@@ -269,7 +269,7 @@ export function SidebarTemplate({
                 <SidebarHeader title="Certifications" />
                 <div className="space-y-1.5 text-xs">
                   {resumeData.certifications.map((cert, index) => (
-                    <div key={index} className="relative group/entry break-inside-avoid"><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
+                    <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                       <div className="font-semibold">
                         {renderInput({
                           value: cert.certificationName,
@@ -342,8 +342,9 @@ export function SidebarTemplate({
               <div>
                 <MainHeader title="Experience" />
                 {resumeData.workExperience.map((exp, index) => (
-                  <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid"><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
-                    <div className="flex justify-between items-baseline">
+                  <div key={index} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:workExperience:${index}`}><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
+                    <div className="break-inside-avoid" data-rb="entry-header">
+                      <div className="flex justify-between items-baseline">
                       <span className="font-bold" style={{ color: accentColor }}>
                         {renderInput({
                           value: exp.jobTitle,
@@ -386,6 +387,7 @@ export function SidebarTemplate({
                         </>
                       )}
                     </div>
+                    </div>
                     <div className="text-gray-700 mt-0.5">
                       {renderInput({
                         value: exp.description,
@@ -403,8 +405,8 @@ export function SidebarTemplate({
               <div>
                 <MainHeader title="Projects" />
                 {resumeData.projects.map((project, index) => (
-                  <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid"><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
-                    <div className="flex justify-between items-baseline">
+                  <div key={index} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
+                    <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
                       <span className="font-bold" style={{ color: accentColor }}>
                         {renderInput({
                           value: project.projectName,
@@ -440,8 +442,9 @@ export function SidebarTemplate({
               <div>
                 <MainHeader title="Education" />
                 {resumeData.education.map((edu, index) => (
-                  <div key={index} className="relative group/entry mb-2 last:mb-0 break-inside-avoid"><EntryChrome section="education" index={index} count={resumeData.education.length} />
-                    <div className="flex justify-between items-baseline">
+                  <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
+                    <div className="break-inside-avoid" data-rb="entry-header">
+                      <div className="flex justify-between items-baseline">
                       <span className="font-bold" style={{ color: accentColor }}>
                         {renderInput({
                           value: edu.degree,
@@ -484,6 +487,7 @@ export function SidebarTemplate({
                         </>
                       )}
                     </div>
+                    </div>
                     {(isEditing || edu.gpa) && (
                       <div className="text-xs text-gray-600">
                         GPA:{' '}
@@ -511,8 +515,10 @@ export function SidebarTemplate({
             {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
               <div>
                 {resumeData.customSections.map((custom, idx) => (
-                  <div key={idx} className="relative group/entry mb-3 last:mb-0 break-inside-avoid"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                    <MainHeader title={custom.sectionTitle} />
+                  <div key={idx} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
+                    <div className="break-inside-avoid" data-rb="entry-header">
+                      <MainHeader title={custom.sectionTitle} />
+                    </div>
                     <div className="text-gray-700">
                       {renderInput({
                         value: custom.content,

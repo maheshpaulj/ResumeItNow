@@ -17,6 +17,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Parse markdown into individual formatted HTML lines. */
+export function markdownToLines(md: string): string[] {
+  if (!md) return [];
+  return md
+    .split('\n')
+    .map((line) => {
+      let l = escapeHtml(line);
+      l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      if (/^\s*-\s/.test(line)) {
+        l = `• ${l.replace(/^\s*-\s/, '')}`;
+      }
+      return l;
+    });
+}
+
 /** Render the app's markdown subset (bold + "- " bullets) as read-only HTML. */
 export function markdownToHtml(md: string): string {
   if (!md) return '';
@@ -552,6 +567,7 @@ export function RichText({
       <div
         ref={ref}
         contentEditable={!enhancing}
+        data-rich-text="true"
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
@@ -642,9 +658,23 @@ export function useRenderInput(isEditing: boolean) {
             </a>
           );
         }
-        const Tag = multiline ? 'div' : 'span';
+        if (multiline) {
+          const lines = markdownToLines(value);
+          return (
+            <div className={cn('flex flex-col', className)} style={inlineStyle} aria-label={ariaLabel}>
+              {lines.map((line, idx) => (
+                <div
+                  key={idx}
+                  className="break-inside-avoid-line text-justify break-words min-w-0"
+                  data-rb="entry-content"
+                  dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }}
+                />
+              ))}
+            </div>
+          );
+        }
         return (
-          <Tag
+          <span
             className={cn('break-words min-w-0', textColor, className)}
             style={inlineStyle}
             aria-label={ariaLabel}

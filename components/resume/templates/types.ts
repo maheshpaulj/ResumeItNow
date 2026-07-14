@@ -98,4 +98,6 @@ export interface TemplateProps {
     value: string
   ) => void;
   customMargins?: { top: number; bottom: number; left: number; right: number };
+  isPrint?: boolean;
+  margins?: 'normal' | 'narrow' | 'custom';
 }

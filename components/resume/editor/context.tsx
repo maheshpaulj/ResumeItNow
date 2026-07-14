@@ -48,6 +48,9 @@ export interface EditorApi {
    *  floating controls are shown, so bubbles never stack up */
   activeKey: string | null;
   setActiveKey: (key: string | null) => void;
+  /** keys of blocks the user forced a page break after ("e:section:index" | "s:section") */
+  pageBreaks: string[];
+  toggleBreak: (key: string) => void;
 }
 
 const noop = () => {};
@@ -61,6 +64,8 @@ export const EditorContext = createContext<EditorApi>({
   moveSection: noop,
   activeKey: null,
   setActiveKey: noop,
+  pageBreaks: [],
+  toggleBreak: noop,
 });
 
 export const useEditor = () => useContext(EditorContext);

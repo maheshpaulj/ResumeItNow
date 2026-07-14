@@ -25,6 +25,7 @@ export function ProfessionalTemplate({
   showIcons,
   showPhoto,
   customMargins,
+  isPrint,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
@@ -32,6 +33,7 @@ export function ProfessionalTemplate({
   showIcons?: boolean;
   showPhoto?: boolean;
   customMargins?: { top: number; bottom: number; left: number; right: number };
+  isPrint?: boolean;
 }) {
   // Memoize accentColor directly
   const colors = useMemo(() => ({
@@ -66,10 +68,10 @@ export function ProfessionalTemplate({
       className="w-full mx-auto bg-white" 
       style={{ 
         fontFamily,
-        paddingTop: customMargins ? `${customMargins.top}px` : '1rem',
-        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1rem',
-        paddingLeft: customMargins ? `${customMargins.left}px` : '1.5rem',
-        paddingRight: customMargins ? `${customMargins.right}px` : '1.5rem',
+        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
+        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
+        paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
+        paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
     >
       {/* Personal Details Section */}
@@ -209,11 +211,13 @@ export function ProfessionalTemplate({
               {resumeData.workExperience.map((experience, index) => (
                 <div
                   key={index}
-                  className={`relative group/entry pb-4 break-inside-avoid ${
+                  className={`relative group/entry pb-4 ${
                     index !== resumeData.workExperience.length - 1 ? 'mb-4 border-b-2 border-dashed border-gray-800' : ''
                   }`}
-                ><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
-                  <div className="flex justify-between items-start mb-1">
+                  data-rb="entry"
+                  data-rbkey={`e:workExperience:${index}`}><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
+                  <div className="break-inside-avoid" data-rb="entry-header">
+                    <div className="flex justify-between items-start mb-1">
                     <div className="flex-1">
                       {renderInput({
                         value: experience.jobTitle,
@@ -278,6 +282,7 @@ export function ProfessionalTemplate({
                         })}
                       </div>
                     )}
+                  </div>
                     {renderInput({
                       value: experience.description,
                       onChange: (value) => updateField('workExperience', index, 'description', value),
@@ -298,11 +303,12 @@ export function ProfessionalTemplate({
               {resumeData.projects.map((project, index) => (
                 <div
                   key={index}
-                  className={`relative group/entry pb-4 break-inside-avoid ${
+                  className={`relative group/entry pb-4 ${
                     index !== resumeData.projects.length - 1 ? 'mb-4 border-b-2 border-dashed border-gray-800' : ''
                   }`}
-                ><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
-                  <div className="flex items-center justify-between mb-1">
+                  data-rb="entry"
+                  data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
+                  <div className="break-inside-avoid flex items-center justify-between mb-1" data-rb="entry-header">
                     {renderInput({
                       value: project.projectName,
                       onChange: (value) => updateField('projects', index, 'projectName', value),
@@ -341,8 +347,9 @@ export function ProfessionalTemplate({
             <div>
               <SectionHeader title="Education" />
               {resumeData.education.map((edu, index) => (
-                <div key={index} className="relative group/entry mb-4 last:mb-0 break-inside-avoid"><EntryChrome section="education" index={index} count={resumeData.education.length} />
-                  <div className="flex justify-between items-start">
+                <div key={index} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
+                  <div className="break-inside-avoid" data-rb="entry-header">
+                    <div className="flex justify-between items-start">
                     {renderInput({
                       value: edu.degree,
                       onChange: (value) => updateField('education', index, 'degree', value),
@@ -393,6 +400,7 @@ export function ProfessionalTemplate({
                       )}
                     </div>
                   </div>
+                  </div>
                   {(isEditing || edu.gpa) && (
                     <div className="text-sm text-gray-600">
                       GPA:{' '}
@@ -426,7 +434,7 @@ export function ProfessionalTemplate({
               <SectionHeader title="Skills" />
               <div className="space-y-2">
                 {resumeData.skills.map((skill, index) => (
-                  <div key={index} className="relative group/entry flex items-start break-inside-avoid"><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
+                  <div key={index} className="relative group/entry flex items-start break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
                     {isEditing && (
                       <div className="absolute right-0 top-0 z-10">
                         <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', index, 'skillType', t)} />
@@ -469,7 +477,7 @@ export function ProfessionalTemplate({
             <div>
               <SectionHeader title="Certifications" />
               {resumeData.certifications.map((cert, index) => (
-                <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid"><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
+                <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                   <div className="flex justify-between items-start">
                     {renderInput({
                       value: cert.certificationName,
@@ -508,7 +516,7 @@ export function ProfessionalTemplate({
               <SectionHeader title="Languages" />
               <div className="flex flex-col space-y-2">
                 {resumeData.languages.map((language, index) => (
-                  <div key={index} className="relative group/entry text-sm flex items-center gap-2 p-1 rounded-md break-inside-avoid"><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
+                  <div key={index} className="relative group/entry text-sm flex items-center gap-2 p-1 rounded-md break-inside-avoid" data-rbkey={`e:languages:${index}`}><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
                     {renderInput({
                       value: language.language,
                       onChange: (value) => updateField('languages', index, 'language', value),
@@ -532,8 +540,10 @@ export function ProfessionalTemplate({
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
               {resumeData.customSections.map((custom, idx) => (
-                <div key={idx} className="relative group/entry mb-4 break-inside-avoid"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <SectionHeader title={custom.sectionTitle} />
+                <div key={idx} className="relative group/entry mb-4" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
+                  <div className="break-inside-avoid" data-rb="entry-header">
+                    <SectionHeader title={custom.sectionTitle} />
+                  </div>
                   {renderInput({
                     value: custom.content,
                     onChange: (value) => updateField('customSections', idx, 'content', value),

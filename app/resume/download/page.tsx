@@ -6,6 +6,8 @@ import { MinimalTemplate } from '@/components/resume/templates/Minimal';
 import { ProfessionalTemplate } from '@/components/resume/templates/Professional';
 import { CompactTemplate } from '@/components/resume/templates/Compact';
 import { SidebarTemplate } from '@/components/resume/templates/Sidebar';
+import { RESUME_FONTS_HREF } from '@/lib/fonts';
+import { paginate, applyManualBreaks } from '@/lib/paginate';
 
 const TEMPLATES = {
   modern: ModernTemplate,
@@ -17,15 +19,6 @@ const TEMPLATES = {
 
 type TemplateKey = keyof typeof TEMPLATES;
 
-// Fonts that need to be fetched from Google Fonts (the rest are system fonts)
-const GOOGLE_FONTS: Record<string, string> = {
-  'DM Sans': 'DM+Sans:wght@400;500;600;700',
-  Roboto: 'Roboto:wght@400;500;700',
-  Lato: 'Lato:wght@400;700',
-  'Open Sans': 'Open+Sans:wght@400;600;700',
-  Montserrat: 'Montserrat:wght@400;500;600;700',
-};
-
 const DownloadContent = () => {
   const searchParams = useSearchParams();
   const [resumeData, setResumeData] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -36,7 +29,9 @@ const DownloadContent = () => {
   const [showIcons, setShowIcons] = useState<boolean>(false);
   const [showPhoto, setShowPhoto] = useState<boolean>(false);
   const [margins, setMargins] = useState<string | undefined>(undefined);
-  const [customMargins, setCustomMargins] = useState<any>(null);
+  const [customMargins, setCustomMargins] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [pageFormat, setPageFormat] = useState<string>('a4');
+  const [pageBreaks, setPageBreaks] = useState<string[]>([]);
 
   const resolvedMargins = useMemo(() => {
     if (margins === 'narrow') {
@@ -56,6 +51,20 @@ const DownloadContent = () => {
       right: isNaN(right) ? 32 : right,
     };
   }, [margins, customMargins]);
+
+  // Puppeteer's page.pdf() margin option already reserves top/bottom space on
+  // EVERY physical page. If the template also applies its own top/bottom CSS
+  // padding, that only lands once at the very start/end of the continuous DOM
+  // flow (native page breaks don't repeat element padding) — page 1 ends up
+  // double-margined while interior pages get none. Sidebar prints edge-to-edge
+  // (0 print margin) so it must keep managing its own top/bottom padding.
+  const templateMargins = useMemo(
+    () =>
+      selectedTemplate === 'sidebar'
+        ? resolvedMargins
+        : { ...resolvedMargins, top: 0, bottom: 0 },
+    [resolvedMargins, selectedTemplate]
+  );
 
   useEffect(() => {
     const toBool = (v: unknown) => v === true || v === 'true';
@@ -85,6 +94,8 @@ const DownloadContent = () => {
       showPhoto: searchParams.get('showPhoto'),
       margins: searchParams.get('margins'),
       customMargins: searchParams.get('customMargins'),
+      pageFormat: searchParams.get('pageFormat'),
+      pageBreaks: searchParams.get('pageBreaks'),
     };
 
     const template = src.template as string | null;
@@ -101,23 +112,57 @@ const DownloadContent = () => {
         setShowPhoto(toBool(src.showPhoto));
         setMargins((src.margins as string) || undefined);
         setCustomMargins(parse(src.customMargins) || null);
+        setPageFormat((src.pageFormat as string) === 'letter' ? 'letter' : 'a4');
+        const pb = parse(src.pageBreaks);
+        setPageBreaks(Array.isArray(pb) ? pb : []);
       } catch (error) {
         console.error('Error parsing resume payload:', error);
       }
     }
   }, [searchParams]);
 
-  const googleFont = fontFamily && GOOGLE_FONTS[fontFamily];
+  // Once rendered and fonts are ready, force page breaks at the exact same block
+  // boundaries the editor computes, then flag Puppeteer that we're paginated.
+  useEffect(() => {
+    if (!resumeData || !selectedTemplate) return;
+    let cancelled = false;
+    const win = window as unknown as { __PAGINATED__?: boolean };
+    win.__PAGINATED__ = false;
+
+    const run = async () => {
+      try {
+        await (document.fonts?.ready ?? Promise.resolve());
+      } catch {
+        /* ignore */
+      }
+      // let layout settle after fonts swap in
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      if (cancelled) return;
+
+      const content = document.getElementById('resume-content');
+      if (content) {
+        const pageH = pageFormat === 'letter' ? 1056 : 1123;
+        // Sidebar prints edge-to-edge (0 print margin); others reserve top+bottom.
+        const contentPerPage =
+          selectedTemplate === 'sidebar'
+            ? pageH
+            : pageH - resolvedMargins.top - resolvedMargins.bottom;
+        applyManualBreaks(content, pageBreaks);
+        paginate(content, { contentPerPage, gap: 0, mode: 'break' });
+      }
+      win.__PAGINATED__ = true;
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeData, selectedTemplate, pageFormat, resolvedMargins, pageBreaks]);
 
   if (!resumeData || !selectedTemplate) {
     return (
       <div className="bg-white">
-        {googleFont && (
-          <link
-            rel="stylesheet"
-            href={`https://fonts.googleapis.com/css2?family=${googleFont}&display=swap`}
-          />
-        )}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="stylesheet" href={RESUME_FONTS_HREF} />
         <div>Loading...</div>
       </div>
     );
@@ -127,13 +172,20 @@ const DownloadContent = () => {
 
   return (
     <div className="bg-white">
-      {googleFont && (
-        // React hoists these into <head>; puppeteer waits for fonts to load
-        <link
-          rel="stylesheet"
-          href={`https://fonts.googleapis.com/css2?family=${googleFont}&display=swap`}
-        />
-      )}
+      {/* Load the identical font set the editor uses so the export matches 1:1. */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href={RESUME_FONTS_HREF} />
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: auto;
+            margin-top: ${selectedTemplate === 'sidebar' ? 0 : resolvedMargins.top}px;
+            margin-bottom: ${selectedTemplate === 'sidebar' ? 0 : resolvedMargins.bottom}px;
+            margin-left: 0px;
+            margin-right: 0px;
+          }
+        }
+      `}} />
       <div id="resume-content">
         <TemplateComponent
           resumeData={resumeData}
@@ -144,7 +196,8 @@ const DownloadContent = () => {
           sectionOrder={sectionOrder}
           showIcons={showIcons}
           showPhoto={showPhoto}
-          customMargins={resolvedMargins || undefined}
+          customMargins={templateMargins}
+          isPrint={true}
         />
       </div>
     </div>

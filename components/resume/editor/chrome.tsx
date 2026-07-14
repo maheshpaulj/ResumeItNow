@@ -2,7 +2,7 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, EyeOff, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, EyeOff, GripVertical, Plus, Scissors, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ENTRY_DEFAULTS, useEditor, type ArraySection } from './context';
 
@@ -20,16 +20,23 @@ export function EditableSection({
   className?: string;
   children: ReactNode;
 }) {
-  const { editable, hideSection, addEntry, moveSection, activeKey } = useEditor();
+  const { editable, hideSection, addEntry, moveSection, activeKey, pageBreaks, toggleBreak } =
+    useEditor();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled: !editable });
 
   if (!editable) {
-    return <div className={className}>{children}</div>;
+    // still tag the wrapper so the PDF page renderer can apply manual breaks
+    return (
+      <div className={className} data-rbkey={`s:${id}`}>
+        {children}
+      </div>
+    );
   }
 
   const isArraySection = id in ENTRY_DEFAULTS;
   const active = activeKey === `s:${id}` || isDragging;
+  const broken = pageBreaks.includes(`s:${id}`);
 
   const style: CSSProperties = {
     // translate only — CSS.Transform includes a scale factor that stretches
@@ -102,6 +109,15 @@ export function EditableSection({
           )}
           <button
             type="button"
+            aria-label="Page break after section"
+            title={broken ? 'Remove page break' : 'Page break after section'}
+            onClick={() => toggleBreak(`s:${id}`)}
+            className={cn(railBtn, broken ? 'text-sky-600' : 'hover:text-sky-600')}
+          >
+            <Scissors className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
             aria-label="Hide section"
             title="Hide section"
             onClick={() => hideSection(id)}
@@ -130,9 +146,11 @@ export function EntryChrome({
   index: number;
   count: number;
 }) {
-  const { editable, addEntry, removeEntry, moveEntry, activeKey } = useEditor();
+  const { editable, addEntry, removeEntry, moveEntry, activeKey, pageBreaks, toggleBreak } =
+    useEditor();
   const ref = useRef<HTMLDivElement>(null);
   const key = `e:${section}:${index}`;
+  const broken = pageBreaks.includes(key);
 
   // Tag the parent (the entry wrapper) so the central hover tracker can find it.
   useEffect(() => {
@@ -184,6 +202,15 @@ export function EntryChrome({
           title="Move down"
         >
           <ArrowDown className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleBreak(key)}
+          className={cn(iconBtn, broken ? 'text-sky-600' : 'hover:text-sky-600')}
+          aria-label="Page break after entry"
+          title={broken ? 'Remove page break' : 'Page break after this entry'}
+        >
+          <Scissors className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"

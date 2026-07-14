@@ -25,6 +25,7 @@ export function MinimalTemplate({
   showIcons,
   showPhoto,
   customMargins,
+  isPrint,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
@@ -32,6 +33,7 @@ export function MinimalTemplate({
   showIcons?: boolean;
   showPhoto?: boolean;
   customMargins?: { top: number; bottom: number; left: number; right: number };
+  isPrint?: boolean;
 }) {
   // Memoize accentColor to avoid recalculation
   const colors = useMemo(() => ({
@@ -66,10 +68,10 @@ export function MinimalTemplate({
       className="w-full mx-auto bg-white" 
       style={{ 
         fontFamily,
-        paddingTop: customMargins ? `${customMargins.top}px` : '1rem',
-        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1rem',
-        paddingLeft: customMargins ? `${customMargins.left}px` : '1.5rem',
-        paddingRight: customMargins ? `${customMargins.right}px` : '1.5rem',
+        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
+        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
+        paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
+        paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
     >
       {/* Personal Details Section */}
@@ -212,15 +214,17 @@ export function MinimalTemplate({
                 {resumeData.workExperience.map((experience, idx) => (
                   <div
                     key={idx}
-                    className="relative group/entry break-inside-avoid pb-3 last:pb-0"
+                    className="relative group/entry pb-3 last:pb-0"
                     style={{
                       borderBottom:
                         idx !== resumeData.workExperience.length - 1
                           ? `1px dashed ${colors.accent}`
                           : 'none',
                     }}
-                  ><EntryChrome section="workExperience" index={idx} count={resumeData.workExperience.length} />
-                    <div className="flex justify-between items-start mb-1">
+                    data-rb="entry"
+                    data-rbkey={`e:workExperience:${idx}`}><EntryChrome section="workExperience" index={idx} count={resumeData.workExperience.length} />
+                    <div className="break-inside-avoid" data-rb="entry-header">
+                      <div className="flex justify-between items-start mb-1">
                       <div className="flex-1">
                         {renderInput({
                           value: experience.jobTitle,
@@ -276,6 +280,7 @@ export function MinimalTemplate({
                           </div>
                         )}
                       </div>
+                    </div>
                       {renderInput({
                         value: experience.description,
                         onChange: (value) =>
@@ -299,15 +304,16 @@ export function MinimalTemplate({
                 {resumeData.projects.map((project, idx) => (
                   <div
                     key={idx}
-                    className="relative group/entry break-inside-avoid pb-3 last:pb-0"
+                    className="relative group/entry pb-3 last:pb-0"
                     style={{
                       borderBottom:
                         idx !== resumeData.projects.length - 1
                           ? `1px dashed ${colors.accent}`
                           : 'none',
                     }}
-                  ><EntryChrome section="projects" index={idx} count={resumeData.projects.length} />
-                    <div className="flex flex-col items-start mb-1">
+                    data-rb="entry"
+                    data-rbkey={`e:projects:${idx}`}><EntryChrome section="projects" index={idx} count={resumeData.projects.length} />
+                    <div className="break-inside-avoid flex flex-col items-start mb-1" data-rb="entry-header">
                       {renderInput({
                         value: project.projectName,
                         onChange: (value) =>
@@ -351,8 +357,9 @@ export function MinimalTemplate({
               <SectionHeader title="Education" />
               <div className="space-y-3">
                 {resumeData.education.map((edu, idx) => (
-                  <div key={idx} className="relative group/entry break-inside-avoid pb-3 last:pb-0"><EntryChrome section="education" index={idx} count={resumeData.education.length} />
-                    <div className="flex justify-between items-start">
+                  <div key={idx} className="relative group/entry pb-3 last:pb-0" data-rb="entry" data-rbkey={`e:education:${idx}`}><EntryChrome section="education" index={idx} count={resumeData.education.length} />
+                    <div className="break-inside-avoid" data-rb="entry-header">
+                      <div className="flex justify-between items-start">
                       {renderInput({
                         value: edu.degree,
                         onChange: (value) => updateField('education', idx, 'degree', value),
@@ -404,6 +411,7 @@ export function MinimalTemplate({
                         )}
                       </div>
                     </div>
+                    </div>
                     {(isEditing || edu.gpa) && (
                       <div className="text-sm text-gray-600">
                         GPA:{' '}
@@ -439,7 +447,7 @@ export function MinimalTemplate({
               <SectionHeader title="Skills" />
               <div className="space-y-1">
                 {resumeData.skills.map((skill, idx) => (
-                  <div key={idx} className="relative group/entry break-inside-avoid"><EntryChrome section="skills" index={idx} count={resumeData.skills.length} />
+                  <div key={idx} className="relative group/entry break-inside-avoid" data-rbkey={`e:skills:${idx}`}><EntryChrome section="skills" index={idx} count={resumeData.skills.length} />
                     {isEditing && (
                       <div className="absolute right-0 top-0 z-10">
                         <SkillTypeToggle type={skill.skillType} onChange={(t) => updateField('skills', idx, 'skillType', t)} />
@@ -485,7 +493,7 @@ export function MinimalTemplate({
               <SectionHeader title="Certifications" />
               <div className="space-y-2">
                 {resumeData.certifications.map((cert, idx) => (
-                  <div key={idx} className="relative group/entry break-inside-avoid"><EntryChrome section="certifications" index={idx} count={resumeData.certifications.length} />
+                  <div key={idx} className="relative group/entry break-inside-avoid" data-rbkey={`e:certifications:${idx}`}><EntryChrome section="certifications" index={idx} count={resumeData.certifications.length} />
                     <div className="flex justify-between items-start">
                       {renderInput({
                         value: cert.certificationName,
@@ -525,7 +533,7 @@ export function MinimalTemplate({
               <SectionHeader title="Languages" />
               <div className="space-y-1">
                 {resumeData.languages.map((language, idx) => (
-                  <div key={idx} className="relative group/entry break-inside-avoid text-sm flex items-center gap-2"><EntryChrome section="languages" index={idx} count={resumeData.languages.length} />
+                  <div key={idx} className="relative group/entry break-inside-avoid text-sm flex items-center gap-2" data-rbkey={`e:languages:${idx}`}><EntryChrome section="languages" index={idx} count={resumeData.languages.length} />
                     {renderInput({
                       value: language.language,
                       onChange: (value) =>
@@ -550,9 +558,11 @@ export function MinimalTemplate({
 
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
-              {resumeData.customSections.map((custom, idx) => (
-                <div key={idx} className="relative group/entry break-inside-avoid mb-4 last:mb-0"><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <SectionHeader title={custom.sectionTitle} />
+               {resumeData.customSections.map((custom, idx) => (
+                <div key={idx} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
+                  <div className="break-inside-avoid" data-rb="entry-header">
+                    <SectionHeader title={custom.sectionTitle} />
+                  </div>
                   {renderInput({
                     value: custom.content,
                     onChange: (value) =>
