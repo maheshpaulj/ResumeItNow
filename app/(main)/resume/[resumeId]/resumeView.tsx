@@ -14,7 +14,6 @@ import {
   Loader2,
   Maximize,
   Palette,
-  PenLine,
   ZoomIn,
   ZoomOut,
   Bold,
@@ -40,6 +39,7 @@ import { ProfessionalTemplate } from '@/components/resume/templates/Professional
 import { CompactTemplate } from '@/components/resume/templates/Compact';
 import { SidebarTemplate } from '@/components/resume/templates/Sidebar';
 import LatexEditor from '@/components/resume/editor/LatexEditor';
+import { LATEX_TEMPLATES, isLatexTemplate } from '@/lib/latexTemplates';
 import {
   EditorContext,
   ENTRY_DEFAULTS,
@@ -293,7 +293,8 @@ export default function ResumeView({
   }>(() => {
     return initialResumeData.customMargins || { top: 36, bottom: 36, left: 32, right: 32 };
   });
-  const [editorMode, setEditorMode] = useState<'visual' | 'latex'>(
+  // Fixed at creation time — visual and LaTeX resumes are separate worlds now.
+  const [editorMode] = useState<'visual' | 'latex'>(
     initialResumeData.editorMode || 'visual'
   );
   const [isSectionsOpen, setIsSectionsOpen] = useState(false);
@@ -312,7 +313,11 @@ export default function ResumeView({
  
   // LaTeX Editor Toolbar Sync States & Refs
   const [latexAutoCompile, setLatexAutoCompile] = useState(true);
-  const [activeLatexTemplate, setActiveLatexTemplate] = useState<TemplateKey>(selectedTemplate || 'modern');
+  // LaTeX resumes store a LaTeX-template id in `template` (e.g. "jakes");
+  // fall back to a registry default for docs created before the split.
+  const [activeLatexTemplate, setActiveLatexTemplate] = useState<string>(() =>
+    isLatexTemplate(initialResumeData.template) ? (initialResumeData.template as string) : 'jakes'
+  );
   const [showLatexPreview, setShowLatexPreview] = useState(true);
   const [latexCompileStatus, setLatexCompileStatus] = useState<'idle' | 'compiling' | 'success' | 'error'>('idle');
   const executeLatexActionRef = useRef<((action: string) => void) | null>(null);
@@ -350,7 +355,12 @@ export default function ResumeView({
 
   /* ------------------------------ measurements ------------------------------ */
 
+  // Both observers key on editorMode: when the page mounts in LaTeX mode the
+  // visual canvas (and pageRef) doesn't exist yet, so a mount-only effect would
+  // never attach — leaving pagination permanently stale after switching back
+  // to visual (headers stranded at page bottoms, entries split mid-block).
   useEffect(() => {
+    if (editorMode !== 'visual') return;
     const el = previewContainerRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) =>
@@ -358,13 +368,14 @@ export default function ResumeView({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [editorMode]);
 
   // Content height changes (fonts finishing, images, dnd drops, edits) both
   // resize the outer frame and re-trigger pagination, debounced. repaginate is
   // idempotent, so the resize it causes converges instead of looping.
   const repaginateRef = useRef<() => void>(() => {});
   useEffect(() => {
+    if (editorMode !== 'visual') return;
     const el = pageRef.current;
     if (!el) return;
     let debounce: ReturnType<typeof setTimeout> | null = null;
@@ -378,7 +389,7 @@ export default function ResumeView({
       observer.disconnect();
       if (debounce) clearTimeout(debounce);
     };
-  }, []);
+  }, [editorMode]);
 
   const scale = zoom === 'fit' ? Math.min(1, containerWidth / page.width) : zoom;
 
@@ -417,23 +428,24 @@ export default function ResumeView({
     repaginateRef.current = repaginate;
   }, [repaginate]);
 
+  // No dependency array on purpose: this runs after EVERY commit. Any render
+  // (autosave chip, hover tracking, edits …) can reflow or remount template
+  // DOM and silently drop the paginator's margin spacers, so pagination must
+  // be re-asserted before each paint. repaginate is idempotent and only sets
+  // state when the page starts actually change, so this cannot loop.
+  // The follow-up timeout re-runs it in a settled context: layout measured
+  // inside React's commit can differ slightly from the final layout (fields,
+  // chrome and toolbars finish mounting), and a stale 36px here is exactly a
+  // page-margin's worth of drift on every page boundary.
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useLayoutEffect(() => {
     repaginate();
-    // Re-run whenever anything that affects layout changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    repaginate,
-    resumeData,
-    selectedTemplate,
-    accentColor,
-    fontFamily,
-    sectionOrder,
-    hiddenSections,
-    showIcons,
-    showPhoto,
-    margins,
-    containerWidth,
-  ]);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => repaginateRef.current(), 60);
+    return () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
+  });
 
   useEffect(() => {
     // fonts loading late shifts every measurement
@@ -469,7 +481,7 @@ export default function ResumeView({
           doc(db, `users/${userEmail}/resumes/${resumeId}`),
           flattenObject({
             ...resumeData,
-            template: selectedTemplate,
+            template: editorMode === 'latex' ? activeLatexTemplate : selectedTemplate,
             accentColor,
             fontFamily,
             sectionOrder,
@@ -498,6 +510,7 @@ export default function ResumeView({
   }, [
     resumeData,
     selectedTemplate,
+    activeLatexTemplate,
     accentColor,
     fontFamily,
     sectionOrder,
@@ -670,8 +683,13 @@ export default function ResumeView({
       let blob;
       
       if (editorMode === 'latex') {
-        const url = `https://latexonline.cc/compile?text=${encodeURIComponent(resumeData.latexContent || '')}`;
-        const response = await fetch(url);
+        // Same compile proxy as the live preview (POST — the document doesn't
+        // fit in a URL), so the download is byte-identical to the preview.
+        const response = await fetch('/api/latex/compile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latex: resumeData.latexContent || '' }),
+        });
         if (!response.ok) throw new Error('Failed to generate LaTeX PDF');
         blob = await response.blob();
       } else {
@@ -968,16 +986,16 @@ export default function ResumeView({
 
             {editorMode === 'latex' && (
               <>
-                {/* Sync from Visual */}
+                {/* Reset the document to the selected template + resume data */}
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-9 gap-1.5 border-border hover:bg-muted text-foreground"
                   onClick={() => regenerateLatexRef.current?.()}
-                  title="Regenerate LaTeX from visual data"
+                  title="Regenerate the LaTeX from the template (discards manual edits)"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Sync from Visual</span>
+                  <span className="hidden sm:inline">Reset to Template</span>
                 </Button>
 
                 <div className="h-4 w-px bg-border mx-1" />
@@ -996,8 +1014,8 @@ export default function ResumeView({
 
                 <div className="h-4 w-px bg-border mx-1" />
 
-                {/* Template selector */}
-                <Select value={activeLatexTemplate} onValueChange={(val: TemplateKey) => {
+                {/* Template selector — LaTeX-only templates */}
+                <Select value={activeLatexTemplate} onValueChange={(val: string) => {
                   setActiveLatexTemplate(val);
                   regenerateLatexRef.current?.(val);
                 }}>
@@ -1005,11 +1023,9 @@ export default function ResumeView({
                     <SelectValue placeholder="Template" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="modern">Modern</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="minimal">Minimal</SelectItem>
-                    <SelectItem value="compact">Compact</SelectItem>
-                    <SelectItem value="sidebar">Sidebar</SelectItem>
+                    {LATEX_TEMPLATES.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -1055,24 +1071,6 @@ export default function ResumeView({
             <div className="ml-auto flex items-center gap-2">
               <SaveStatusChip status={saveStatus} />
 
-              {/* <Button
-                variant="outline"
-                className="h-9 gap-2"
-                onClick={() => setEditorMode(editorMode === 'visual' ? 'latex' : 'visual')}
-              >
-                {editorMode === 'visual' ? (
-                  <>
-                    <Code2 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Switch to LaTeX</span>
-                  </>
-                ) : (
-                  <>
-                    <PenLine className="h-4 w-4" />
-                    <span className="hidden sm:inline">Switch to Visual</span>
-                  </>
-                )}
-              </Button> */}
-
             <Button onClick={handleDownload} className="h-9 gap-2" disabled={isDownloading}>
               {isDownloading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1092,9 +1090,19 @@ export default function ResumeView({
         className={editorMode === 'visual' ? 'w-full pb-16 overflow-x-auto overflow-y-hidden' : 'w-full h-[calc(100vh-14rem)] min-h-[750px] overflow-hidden'}
       >
         {editorMode === 'latex' ? (
-          <LatexEditor 
-            resumeData={resumeData}
-            selectedTemplate={selectedTemplate}
+          <LatexEditor
+            // Merge the design settings in so regenerated LaTeX mirrors the
+            // visual editor: same accent, font, margins, and section order.
+            resumeData={{
+              ...resumeData,
+              accentColor,
+              fontFamily,
+              margins: margins === 'custom' ? undefined : margins,
+              customMargins: resolvedMargins,
+              sectionOrder: visibleSectionOrder,
+              template: selectedTemplate,
+            } as typeof resumeData}
+            selectedTemplate={activeLatexTemplate}
             updateResumeData={(data) => {
               setResumeData(data);
               // Save it to firebase

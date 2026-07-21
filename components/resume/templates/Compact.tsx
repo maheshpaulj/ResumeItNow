@@ -15,6 +15,18 @@ const contactIcons = {
 };
 
 // Dense, ATS-friendly single-column template with uppercase rule headers.
+// Module scope on purpose: an inline definition makes React remount headers
+// every render, wiping the paginator's margin spacers.
+const SectionHeader = ({ title, color }: { title: string; color: string }) => (
+  <h2
+    data-rb="header"
+    className="text-[13px] font-bold uppercase tracking-[0.15em] border-b pb-0.5 mb-2"
+    style={{ color, borderColor: color }}
+  >
+    {title}
+  </h2>
+);
+
 export function CompactTemplate({
   resumeData,
   isEditing,
@@ -47,16 +59,6 @@ export function CompactTemplate({
 
   const renderInput = useRenderInput(isEditing);
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <h2
-      data-rb="header"
-      className="text-[13px] font-bold uppercase tracking-[0.15em] border-b pb-0.5 mb-2"
-      style={{ color: accentColor, borderColor: accentColor }}
-    >
-      {title}
-    </h2>
-  );
-
   const hasContent = (section: unknown): boolean => {
     if (!section) return false;
     if (Array.isArray(section)) return section.length > 0;
@@ -73,8 +75,8 @@ export function CompactTemplate({
       className="w-full mx-auto bg-white text-gray-800 text-[13px] leading-snug" 
       style={{ 
         fontFamily,
-        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
-        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
+        paddingTop: customMargins ? `${customMargins.top}px` : '1.5rem',
+        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1.5rem',
         paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
         paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
@@ -157,7 +159,7 @@ export function CompactTemplate({
         <EditableSection key={section} id={section} className="mb-3 empty:hidden">
           {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (
             <div>
-              <SectionHeader title="Summary" />
+              <SectionHeader color={accentColor} title="Summary" />
               <div className="text-justify">
                 {renderInput({
                   value: resumeData.objective,
@@ -171,7 +173,7 @@ export function CompactTemplate({
 
           {section === 'workExperience' && (isEditing || hasContent(resumeData.workExperience)) && (
             <div>
-              <SectionHeader title="Experience" />
+              <SectionHeader color={accentColor} title="Experience" />
               {resumeData.workExperience.map((exp, index) => (
                 <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:workExperience:${index}`}><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
                   <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
@@ -233,7 +235,7 @@ export function CompactTemplate({
 
           {section === 'projects' && (isEditing || hasContent(resumeData.projects)) && (
             <div>
-              <SectionHeader title="Projects" />
+              <SectionHeader color={accentColor} title="Projects" />
               {resumeData.projects.map((project, index) => (
                 <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
                   <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
@@ -270,7 +272,7 @@ export function CompactTemplate({
 
           {section === 'education' && (isEditing || hasContent(resumeData.education)) && (
             <div>
-              <SectionHeader title="Education" />
+              <SectionHeader color={accentColor} title="Education" />
               {resumeData.education.map((edu, index) => (
                 <div key={index} className="relative group/entry mb-1.5 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
                   <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
@@ -345,7 +347,7 @@ export function CompactTemplate({
 
           {section === 'skills' && (isEditing || hasContent(resumeData.skills)) && (
             <div>
-              <SectionHeader title="Skills" />
+              <SectionHeader color={accentColor} title="Skills" />
               <div className="space-y-0.5">
                 {resumeData.skills.map((skill, index) => (
                   <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
@@ -386,7 +388,7 @@ export function CompactTemplate({
 
           {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
             <div>
-              <SectionHeader title="Certifications" />
+              <SectionHeader color={accentColor} title="Certifications" />
               {resumeData.certifications.map((cert, index) => (
                 <div key={index} className="relative group/entry flex justify-between items-baseline mb-1 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                   <div>
@@ -421,7 +423,7 @@ export function CompactTemplate({
 
           {section === 'languages' && (isEditing || hasContent(resumeData.languages)) && (
             <div>
-              <SectionHeader title="Languages" />
+              <SectionHeader color={accentColor} title="Languages" />
               <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                 {resumeData.languages.map((language, index) => (
                   <span key={index} className="relative group/entry break-inside-avoid"><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
@@ -454,7 +456,7 @@ export function CompactTemplate({
               {resumeData.customSections.map((custom, idx) => (
                 <div key={idx} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
                   <div className="break-inside-avoid" data-rb="entry-header">
-                    <SectionHeader title={custom.sectionTitle} />
+                    <SectionHeader color={accentColor} title={custom.sectionTitle} />
                   </div>
                   <div className="text-gray-700">
                     {renderInput({

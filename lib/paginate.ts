@@ -33,7 +33,16 @@ export function applyManualBreaks(content: HTMLElement, keys: string[]) {
 export interface PaginateOpts {
   contentPerPage: number;
   gap: number;
-  mode: 'push' | 'break';
+  /**
+   * push   — editor canvas: margin spacers drop the break block to the next
+   *          page frame.
+   * filler — PDF export: real spacer <div>s instead of margins. Print
+   *          fragmentation TRUNCATES margins that cross a page boundary
+   *          (which is how pages 2+ lose their top margin), but a plain block
+   *          element fragments across the boundary and preserves the space.
+   * break  — legacy export path: native `break-before: page`.
+   */
+  mode: 'push' | 'filler' | 'break';
 }
 
 export function paginate(
@@ -46,6 +55,7 @@ export function paginate(
     delete el.dataset.pageSpacer;
     delete el.dataset.origMt;
   });
+  content.querySelectorAll<HTMLElement>('[data-page-filler]').forEach((el) => el.remove());
   content.querySelectorAll<HTMLElement>('[data-page-break]').forEach((el) => {
     el.style.breakBefore = '';
     delete el.dataset.pageBreak;
@@ -146,14 +156,39 @@ export function paginate(
     }
 
     if (mode === 'push') {
-      const push = Math.max(0, limit + gap - topOf(target));
-      if (push > 0) {
+      const desired = limit + gap;
+      if (topOf(target) < desired) {
         const base = parseFloat(getComputedStyle(target).marginTop) || 0;
         target.dataset.origMt = target.style.marginTop || '';
         target.dataset.pageSpacer = '1';
-        target.style.marginTop = `${base + push}px`;
-        const shortfall = limit + gap - topOf(target);
-        if (shortfall > 0.5) target.style.marginTop = `${base + push + shortfall}px`;
+        // Margin collapse makes the applied margin land nonlinearly — the
+        // effective gap is max(ourMargin, adjacentMargin), so a single
+        // corrective pass can under- or overshoot. Iterate until it settles.
+        let m = base + (desired - topOf(target));
+        target.style.marginTop = `${m}px`;
+        for (let pass = 0; pass < 4; pass += 1) {
+          const off = desired - topOf(target);
+          if (Math.abs(off) <= 0.5) break;
+          m += off;
+          target.style.marginTop = `${m}px`;
+        }
+      }
+    } else if (mode === 'filler') {
+      const desired = limit + gap;
+      if (topOf(target) < desired) {
+        const filler = target.ownerDocument.createElement('div');
+        filler.setAttribute('data-page-filler', '1');
+        // Un-collapsing the margins around the insertion point shifts things,
+        // so size the filler iteratively like the push spacer.
+        let h = desired - topOf(target);
+        filler.style.height = `${Math.max(0, h)}px`;
+        target.parentNode?.insertBefore(filler, target);
+        for (let pass = 0; pass < 4; pass += 1) {
+          const off = desired - topOf(target);
+          if (Math.abs(off) <= 0.5) break;
+          h += off;
+          filler.style.height = `${Math.max(0, h)}px`;
+        }
       }
     } else {
       target.style.breakBefore = 'page';

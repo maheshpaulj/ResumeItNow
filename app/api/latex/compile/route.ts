@@ -51,31 +51,121 @@ function packTar(filename: string, content: string): Buffer {
   return Buffer.concat([header, contentBuf, contentPadding, eoa]);
 }
 
+// Docs pasted from AI tools/Overleaf often need a Unicode engine; pick it up
+// automatically so "paste anything" compiles without the user knowing engines.
+function detectEngine(latex: string): "pdflatex" | "xelatex" | "lualatex" {
+  if (/\\usepackage(\[[^\]]*\])?\{[^}]*\bluacode\b[^}]*\}|\\directlua/.test(latex)) return "lualatex";
+  if (/\\usepackage(\[[^\]]*\])?\{[^}]*\b(fontspec|unicode-math|polyglossia)\b[^}]*\}|\\setmainfont|\\setsansfont/.test(latex)) {
+    return "xelatex";
+  }
+  return "pdflatex";
+}
+
+// latexonline.cc's TeX Live is missing a few packages that AI-generated
+// resumes use constantly. Rather than hard-failing the compile, swap them for
+// a graceful equivalent: icon commands degrade to nothing, missing fonts fall
+// back to a close available one.
+const FA_ICON_COMMANDS = [
+  "faEnvelope", "faEnvelopeOpen", "faPhone", "faPhoneAlt", "faMobile", "faMobileAlt",
+  "faMapMarker", "faMapMarkerAlt", "faLocationDot", "faHome", "faBuilding",
+  "faLinkedin", "faLinkedinIn", "faGithub", "faGithubSquare", "faGitlab",
+  "faGlobe", "faLink", "faExternalLinkAlt", "faAt", "faTwitter", "faXTwitter",
+  "faStackOverflow", "faMedium", "faKaggle", "faOrcid",
+  "faBriefcase", "faGraduationCap", "faUniversity", "faSchool", "faBook",
+  "faCode", "faLaptopCode", "faTerminal", "faDatabase", "faServer", "faCogs",
+  "faTools", "faWrench", "faFlask", "faChartLine", "faProjectDiagram",
+  "faCalendar", "faCalendarAlt", "faStar", "faTrophy", "faAward", "faCertificate",
+  "faMedal", "faLanguage", "faUser", "faUsers", "faPen", "faCircle", "faCaretRight",
+];
+// Single line on purpose: replacing one \usepackage line with one shim line
+// keeps every later line number intact, so compile-error markers stay accurate.
+const FONTAWESOME_SHIM =
+  "\\providecommand{\\faIcon}[2][]{} " +
+  FA_ICON_COMMANDS.map((c) => `\\providecommand{\\${c}}{}`).join(" ") +
+  " % fontawesome unavailable here; icons degrade gracefully";
+
+const PACKAGE_SHIMS: Record<string, string> = {
+  fontawesome5: FONTAWESOME_SHIM,
+  fontawesome: FONTAWESOME_SHIM,
+  montserrat: "\\usepackage[default]{raleway}", // closest available geometric sans
+};
+
+function shimMissingPackages(src: string): string {
+  return src.replace(/\\usepackage(\[[^\]]*\])?\{([^}]*)\}/g, (full, opts, pkgs) => {
+    const list = (pkgs as string).split(",").map((s) => s.trim());
+    if (!list.some((p) => p in PACKAGE_SHIMS)) return full;
+    const kept = list.filter((p) => !(p in PACKAGE_SHIMS));
+    const shims = list.filter((p) => p in PACKAGE_SHIMS).map((p) => PACKAGE_SHIMS[p]);
+    const keptLine = kept.length ? `\\usepackage${opts || ""}{${kept.join(",")}}\n` : "";
+    return keptLine + shims.join("\n");
+  });
+}
+
+// Pull the useful parts out of a TeX log so the editor can mark exact lines.
+// latexonline emits file-line-error format ("...main.tex:12: error: msg");
+// classic logs use "! msg" followed by an "l.12" pointer — handle both.
+function parseTexLog(log: string): { line: number | null; message: string }[] {
+  const errors: { line: number | null; message: string }[] = [];
+  const lines = log.split(/\r?\n/);
+  for (let i = 0; i < lines.length && errors.length < 20; i += 1) {
+    const fle = lines[i].match(/^.*?\.tex:(\d+):\s*(?:error:\s*)?(.+)$/i);
+    if (fle) {
+      errors.push({ line: parseInt(fle[1], 10), message: fle[2].trim() });
+      continue;
+    }
+    if (!lines[i].startsWith("!")) continue;
+    const message = lines[i].replace(/^!\s*/, "").trim();
+    let lineNo: number | null = null;
+    for (let j = i + 1; j < Math.min(i + 8, lines.length); j += 1) {
+      const m = lines[j].match(/^l\.(\d+)/);
+      if (m) { lineNo = parseInt(m[1], 10); break; }
+    }
+    if (message) errors.push({ line: lineNo, message });
+  }
+  return errors;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { latex } = await request.json();
     if (!latex) {
       return NextResponse.json({ message: "No LaTeX content provided" }, { status: 400 });
     }
+    if (!/\\documentclass/.test(latex)) {
+      return NextResponse.json(
+        {
+          message: "Not a complete LaTeX document",
+          details: "The source has no \\documentclass. Paste a full document (starting with \\documentclass{...} and containing \\begin{document} ... \\end{document}).",
+          errors: [{ line: 1, message: "Missing \\documentclass — paste a complete LaTeX document." }],
+        },
+        { status: 422 }
+      );
+    }
 
     // Pack the raw LaTeX file into a ustar tarball
-    const tarBuffer = packTar("main.tex", latex);
+    const source = shimMissingPackages(latex);
+    const tarBuffer = packTar("main.tex", source);
 
     // Create standard multipart form data
     const formData = new FormData();
     const blob = new Blob([tarBuffer], { type: "application/x-tar" });
     formData.append("file", blob, "project.tar");
 
-    // Send POST to /data endpoint on latexonline.cc
-    const response = await fetch("https://latexonline.cc/data?target=main.tex", {
-      method: "POST",
-      body: formData,
-    });
+    // Send POST to /data endpoint on latexonline.cc (full TeX Live install)
+    const engine = detectEngine(latex);
+    const response = await fetch(
+      `https://latexonline.cc/data?target=main.tex&command=${engine}`,
+      { method: "POST", body: formData }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       return NextResponse.json(
-        { message: "LaTeX compilation failed", details: errorText },
+        {
+          message: "LaTeX compilation failed",
+          details: errorText,
+          errors: parseTexLog(errorText),
+        },
         { status: response.status }
       );
     }
@@ -89,10 +179,13 @@ export async function POST(request: NextRequest) {
         "Content-Disposition": "inline; filename=resume.pdf",
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("LaTeX compilation proxy error:", error);
     return NextResponse.json(
-      { message: "Internal server error during compilation", details: error?.message },
+      {
+        message: "Internal server error during compilation",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

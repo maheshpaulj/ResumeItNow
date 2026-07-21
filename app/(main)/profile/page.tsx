@@ -18,6 +18,7 @@ import { ProfessionalTemplate } from '@/components/resume/templates/Professional
 import { CompactTemplate } from '@/components/resume/templates/Compact'
 import { SidebarTemplate } from '@/components/resume/templates/Sidebar'
 import type { ResumeData } from '@/components/resume/templates/types'
+import { isLatexTemplate } from '@/lib/latexTemplates'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +58,34 @@ interface Resume {
 // down to exactly fill the card width.
 const PAGE_WIDTH_PX = 794
 
+// A LaTeX resume can't be rendered with the visual template components — its
+// output is a compiled PDF. Compiling per card would be far too slow, so show
+// the chosen LaTeX template's representative preview image instead (instant,
+// and it reflects the actual template style).
+function LatexPreview({ resume }: { resume: Resume }) {
+  const isKnown = isLatexTemplate(resume.template)
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-white">
+      {isKnown ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/latex-templates/${resume.template}.png`}
+          alt={`${resume.title || 'LaTeX resume'} preview`}
+          className="h-full w-full object-cover object-top"
+        />
+      ) : (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted">
+          <FileText className="h-9 w-9 text-muted-foreground opacity-50" />
+          <span className="text-xs font-medium text-muted-foreground">LaTeX résumé</span>
+        </div>
+      )}
+      <span className="absolute right-2 top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+        TeX
+      </span>
+    </div>
+  )
+}
+
 function ResumePreview({ resume }: { resume: Resume }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0)
@@ -70,6 +99,11 @@ function ResumePreview({ resume }: { resume: Resume }) {
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  // LaTeX resumes get their own image-based preview.
+  if (resume.data?.editorMode === 'latex' || isLatexTemplate(resume.template)) {
+    return <LatexPreview resume={resume} />
+  }
 
   const templateKey =
     resume.template && resume.template in TEMPLATES

@@ -1,20 +1,29 @@
 "use client";
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { doc, increment, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EMPTY_RESUME, normalizeImportedResume } from '@/lib/resumeDefaults';
+import { MOCK_RESUME } from '@/lib/mockResume';
+import { RESUME_FONTS_HREF } from '@/lib/fonts';
+import { LATEX_TEMPLATES, generateLatex } from '@/lib/latexTemplates';
+import { ModernTemplate } from '@/components/resume/templates/Modern';
+import { MinimalTemplate } from '@/components/resume/templates/Minimal';
+import { ProfessionalTemplate } from '@/components/resume/templates/Professional';
+import { CompactTemplate } from '@/components/resume/templates/Compact';
+import { SidebarTemplate } from '@/components/resume/templates/Sidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   ArrowRight,
+  Code2,
   FileUp,
   Loader2,
   PenLine,
@@ -225,7 +234,13 @@ export default function CreateResumePage() {
   );
 
   return (
-    <div className="container mx-auto min-h-screen max-w-4xl px-4 py-12">
+    <div
+      className="mx-auto min-h-screen w-full px-4 py-12 transition-[max-width] duration-300"
+      style={{ maxWidth: mode === 'template' ? '72rem' : '56rem' }}
+    >
+      {/* Template thumbnails render the real templates — load their fonts. */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href={RESUME_FONTS_HREF} />
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold sm:text-4xl">Let&apos;s build your resume</h1>
         <p className="mt-2 text-muted-foreground">
@@ -243,13 +258,15 @@ export default function CreateResumePage() {
         )}
       </div>
 
-      <AnimatePresence mode="wait">
+      {/* Plain conditional rendering with entrance-only animations —
+          AnimatePresence mode="wait" deadlocks here (entering branch never
+          mounts), so exit animations are intentionally dropped. */}
+      <div>
         {mode === 'choose' ? (
           <motion.div
             key="choose"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
             className="grid gap-6 sm:grid-cols-2"
           >
@@ -311,63 +328,166 @@ export default function CreateResumePage() {
             key="template"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-6"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Choose a starting template</h2>
+              <div>
+                <h2 className="text-2xl font-bold sm:text-3xl">Choose a starting template</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Click any template to open it — you can change styling, colors and fonts later.
+                </p>
+              </div>
               <button
                 onClick={() => setMode('choose')}
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                className="inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" /> Start over
               </button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-              {[
-                { id: 'modern', label: 'Modern' },
-                { id: 'minimal', label: 'Minimal' },
-                { id: 'professional', label: 'Professional' },
-                { id: 'compact', label: 'Compact' },
-                { id: 'sidebar', label: 'Sidebar' },
-              ].map((t) => (
-                <Card
-                  key={t.id}
-                  onClick={async () => {
-                    if (busy || !pendingData) return;
-                    setBusy('import'); // reuse import state for loading UI
-                    try {
-                      const resumeId = await createResume(
-                        { ...pendingData, template: t.id },
-                        pendingTitle
-                      );
-                      toast({ title: 'Success', description: 'Resume created successfully.' });
-                      router.push(`/resume/${resumeId}`);
-                    } catch (error) {
-                      toast({
-                        title: 'Error',
-                        variant: 'destructive',
-                        description: 'Failed to create resume.',
-                      });
-                      setBusy(null);
-                    }
-                  }}
-                  className={`group relative cursor-pointer overflow-hidden border-2 transition-all hover:border-primary ${
-                    busy ? 'pointer-events-none opacity-50' : ''
-                  }`}
-                >
-                  <div className="aspect-[1/1.414] bg-muted/20 p-2">
-                    <div className="relative h-full w-full overflow-hidden rounded border bg-white shadow-sm transition-transform group-hover:scale-[1.02] p-2 flex flex-col gap-2">
-                      <TemplatePreview id={t.id} />
+
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <PenLine className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Visual editor</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Edit directly on the page like a document — drag sections, click any text.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  { id: 'modern', label: 'Modern', blurb: 'Accent headers with a bold color rule.' },
+                  { id: 'minimal', label: 'Minimal', blurb: 'Clean black-and-white, maximum content.' },
+                  { id: 'professional', label: 'Professional', blurb: 'Centered classic layout, timeless.' },
+                  { id: 'compact', label: 'Compact', blurb: 'Dense serif — fits more on one page.' },
+                  { id: 'sidebar', label: 'Sidebar', blurb: 'Two-column with a tinted accent rail.' },
+                ].map((t) => (
+                  <Card
+                    key={t.id}
+                    onClick={async () => {
+                      if (busy || !pendingData) return;
+                      setBusy('import'); // reuse import state for loading UI
+                      try {
+                        const resumeId = await createResume(
+                          { ...pendingData, template: t.id },
+                          pendingTitle
+                        );
+                        toast({ title: 'Success', description: 'Resume created successfully.' });
+                        router.push(`/resume/${resumeId}`);
+                      } catch (error) {
+                        toast({
+                          title: 'Error',
+                          variant: 'destructive',
+                          description: 'Failed to create resume.',
+                        });
+                        setBusy(null);
+                      }
+                    }}
+                    className={`group relative cursor-pointer overflow-hidden border-2 transition-all hover:-translate-y-1 hover:border-primary hover:shadow-xl ${
+                      busy ? 'pointer-events-none opacity-50' : ''
+                    }`}
+                  >
+                    <div className="aspect-[1/1.414] bg-muted/20 p-3">
+                      <div className="relative h-full w-full overflow-hidden rounded-md border bg-white shadow-sm">
+                        <TemplatePreview id={t.id} />
+                        {/* hover call-to-action */}
+                        <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-primary/70 via-primary/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <span className="mb-4 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-primary shadow-lg">
+                            Use this template
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-2.5 text-center border-t bg-card text-xs font-semibold text-card-foreground select-none">
-                    {t.label}
-                  </div>
-                </Card>
-              ))}
+                    <div className="border-t bg-card px-4 py-3 select-none">
+                      <div className="text-sm font-semibold text-card-foreground">{t.label}</div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t.blurb}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-8">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                  <Code2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">LaTeX editor</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Classic LaTeX resumes edited as code, Overleaf-style — full control, compiled
+                    with real TeX.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {LATEX_TEMPLATES.map((t) => (
+                  <Card
+                    key={t.id}
+                    onClick={async () => {
+                      if (busy || !pendingData) return;
+                      setBusy('import');
+                      try {
+                        // Imported data populates the template; a scratch resume
+                        // gets example content to edit (Overleaf-style).
+                        const source = pendingData.personalDetails.fullName
+                          ? generateLatex(pendingData, t.id)
+                          : generateLatex(MOCK_RESUME, t.id);
+                        const resumeId = await createResume(
+                          {
+                            ...pendingData,
+                            template: t.id,
+                            editorMode: 'latex',
+                            latexContent: source,
+                          },
+                          pendingTitle
+                        );
+                        toast({ title: 'Success', description: 'LaTeX resume created.' });
+                        router.push(`/resume/${resumeId}`);
+                      } catch (error) {
+                        toast({
+                          title: 'Error',
+                          variant: 'destructive',
+                          description: 'Failed to create resume.',
+                        });
+                        setBusy(null);
+                      }
+                    }}
+                    className={`group relative cursor-pointer overflow-hidden border-2 transition-all hover:-translate-y-1 hover:border-emerald-500 hover:shadow-xl ${
+                      busy ? 'pointer-events-none opacity-50' : ''
+                    }`}
+                  >
+                    <div className="aspect-[1/1.414] bg-muted/20 p-3">
+                      <div className="relative h-full w-full overflow-hidden rounded-md border bg-white shadow-sm">
+                        {/* Pre-compiled first page of the real template */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/latex-templates/${t.id}.png`}
+                          alt={`${t.label} LaTeX template preview`}
+                          className="h-full w-full object-cover object-top"
+                        />
+                        <span className="absolute right-2 top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                          TeX
+                        </span>
+                        {/* hover call-to-action */}
+                        <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-emerald-600/70 via-emerald-600/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <span className="mb-4 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-emerald-600 shadow-lg">
+                            Use this template
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t bg-card px-4 py-3 select-none">
+                      <div className="text-sm font-semibold text-card-foreground">{t.label}</div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t.blurb}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -375,7 +495,6 @@ export default function CreateResumePage() {
             key="import"
             initial={{ opacity: 0, scale: 0.97, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
           >
             <Card className="border-2 border-violet-500/40">
@@ -478,7 +597,7 @@ export default function CreateResumePage() {
             </Card>
           </motion.div>
         )}
-      </AnimatePresence>
+      </div>
 
       <input
         ref={fileInputRef}
@@ -506,171 +625,63 @@ export default function CreateResumePage() {
   );
 }
 
+// A4 page is 794px wide at 96dpi; thumbnails render the real template with rich
+// mock data, scaled so the entire first page fits the card (profile-page pattern).
+const PAGE_WIDTH_PX = 794;
+const PAGE_HEIGHT_PX = 1123;
+
+const PREVIEW_TEMPLATES = {
+  modern: ModernTemplate,
+  minimal: MinimalTemplate,
+  professional: ProfessionalTemplate,
+  compact: CompactTemplate,
+  sidebar: SidebarTemplate,
+} as const;
+
 function TemplatePreview({ id }: { id: string }) {
-  if (id === 'modern') {
-    return (
-      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none opacity-85">
-        {/* Header */}
-        <div className="flex flex-col items-center gap-0.5">
-          <div className="h-1.5 w-1/2 rounded-full bg-slate-800" />
-          <div className="h-0.5 w-1/3 rounded-full bg-slate-400" />
-        </div>
-        {/* Sections */}
-        <div className="mt-2 space-y-2">
-          {/* Section 1 */}
-          <div className="space-y-0.5">
-            <div className="h-1 w-1/4 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-full bg-slate-200" />
-            <div className="space-y-0.5 pl-0.5">
-              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
-              <div className="h-0.5 w-3/4 rounded-full bg-slate-300" />
-            </div>
-          </div>
-          {/* Section 2 */}
-          <div className="space-y-0.5">
-            <div className="h-1 w-1/4 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-full bg-slate-200" />
-            <div className="space-y-0.5 pl-0.5">
-              <div className="h-0.5 w-2/3 rounded-full bg-slate-300" />
-              <div className="h-0.5 w-4/5 rounded-full bg-slate-300" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
 
-  if (id === 'minimal') {
-    return (
-      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none p-0.5 opacity-85">
-        {/* Header */}
-        <div className="flex flex-col items-start gap-0.5">
-          <div className="h-1.5 w-2/5 rounded-full bg-slate-800" />
-          <div className="h-0.5 w-1/2 rounded-full bg-slate-400" />
-        </div>
-        {/* Sections */}
-        <div className="mt-2 space-y-2.5">
-          {/* Section 1 */}
-          <div className="space-y-0.5">
-            <div className="h-1 w-1/3 rounded-full bg-slate-700" />
-            <div className="space-y-0.5">
-              <div className="h-0.5 w-11/12 rounded-full bg-slate-300" />
-              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
-            </div>
-          </div>
-          {/* Section 2 */}
-          <div className="space-y-0.5">
-            <div className="h-1 w-1/3 rounded-full bg-slate-700" />
-            <div className="space-y-0.5">
-              <div className="h-0.5 w-4/5 rounded-full bg-slate-300" />
-            </div>
-          </div>
-        </div>
-      </div>
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // Measure synchronously so the preview paints on the first frame; the
+    // observer only handles later container resizes.
+    setScale(el.getBoundingClientRect().width / PAGE_WIDTH_PX);
+    const observer = new ResizeObserver((entries) =>
+      setScale(entries[0].contentRect.width / PAGE_WIDTH_PX)
     );
-  }
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  if (id === 'professional') {
-    return (
-      <div className="flex h-full w-full flex-col gap-1 text-[5px] select-none pointer-events-none opacity-85">
-        {/* Header */}
-        <div className="flex flex-col items-center gap-0.5">
-          <div className="h-2 w-3/5 rounded-full bg-slate-800" />
-          <div className="h-0.5 w-2/5 rounded-full bg-slate-400" />
-        </div>
-        {/* Sections */}
-        <div className="mt-2 space-y-2">
-          {/* Section 1 */}
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1">
-              <div className="h-1 w-1/4 rounded-full bg-slate-700" />
-              <div className="h-[0.5px] flex-1 bg-violet-400" />
-            </div>
-            <div className="space-y-0.5 pl-0.5">
-              <div className="h-0.5 w-full rounded-full bg-slate-300" />
-              <div className="h-0.5 w-11/12 rounded-full bg-slate-300" />
-            </div>
-          </div>
-          {/* Section 2 */}
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1">
-              <div className="h-1 w-1/4 rounded-full bg-slate-700" />
-              <div className="h-[0.5px] flex-1 bg-violet-400" />
-            </div>
-            <div className="space-y-0.5 pl-0.5">
-              <div className="h-0.5 w-5/6 rounded-full bg-slate-300" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const TemplateComponent = PREVIEW_TEMPLATES[id as keyof typeof PREVIEW_TEMPLATES];
+  if (!TemplateComponent) return null;
 
-  if (id === 'compact') {
-    return (
-      <div className="flex h-full w-full flex-col gap-0.5 text-[5px] select-none pointer-events-none p-0.5 opacity-85">
-        {/* Header */}
-        <div className="flex justify-between items-center pb-0.5 border-b border-slate-200">
-          <div className="h-1.5 w-1/3 rounded-full bg-slate-800" />
-          <div className="h-0.5 w-1/3 rounded-full bg-slate-400" />
+  return (
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden bg-white pointer-events-none select-none"
+    >
+      {scale > 0 && (
+        <div
+          style={{
+            width: PAGE_WIDTH_PX,
+            height: PAGE_HEIGHT_PX,
+            overflow: 'hidden',
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
+          aria-hidden
+        >
+          <TemplateComponent
+            resumeData={MOCK_RESUME}
+            isEditing={false}
+            updateField={() => {}}
+            showIcons={true}
+          />
         </div>
-        {/* High Density Rows */}
-        <div className="space-y-1.5 mt-1.5">
-          <div className="space-y-0.5">
-            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
-            <div className="h-[0.5px] w-11/12 rounded-full bg-slate-300" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
-            <div className="h-[0.5px] w-3/4 rounded-full bg-slate-300" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-0.5 w-1/4 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-4/5 rounded-full bg-slate-300" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === 'sidebar') {
-    return (
-      <div className="flex h-full w-full -m-2 text-[5px] select-none pointer-events-none opacity-85">
-        {/* Sidebar */}
-        <div className="w-1/3 bg-slate-100 dark:bg-slate-800/60 p-1 flex flex-col gap-1 border-r border-slate-200">
-          <div className="h-1 w-full rounded-full bg-slate-700" />
-          <div className="space-y-0.5">
-            <div className="h-0.5 w-3/4 rounded-full bg-slate-400" />
-            <div className="h-0.5 w-5/6 rounded-full bg-slate-400" />
-          </div>
-          <div className="space-y-0.5 mt-1.5">
-            <div className="h-0.5 w-2/3 rounded-full bg-slate-600" />
-            <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
-            <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
-          </div>
-        </div>
-        {/* Main Body */}
-        <div className="flex-1 p-1 flex flex-col gap-1.5">
-          <div className="h-2 w-2/3 rounded-full bg-slate-800" />
-          <div className="space-y-0.5">
-            <div className="h-0.5 w-1/3 rounded-full bg-slate-600" />
-            <div className="space-y-[0.5px]">
-              <div className="h-[0.5px] w-11/12 rounded-full bg-slate-300" />
-              <div className="h-[0.5px] w-5/6 rounded-full bg-slate-300" />
-            </div>
-          </div>
-          <div className="space-y-0.5 mt-0.5">
-            <div className="h-0.5 w-1/3 rounded-full bg-slate-600" />
-            <div className="space-y-[0.5px]">
-              <div className="h-[0.5px] w-full rounded-full bg-slate-300" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+    </div>
+  );
 }

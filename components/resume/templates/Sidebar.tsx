@@ -10,6 +10,28 @@ import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome'
 const SIDEBAR_SECTIONS = ['skills', 'languages', 'certifications'];
 
 // Two-column template: accent sidebar with contact/skills, main column with experience.
+// Module scope on purpose: an inline definition makes React remount headers
+// every render, wiping the paginator's margin spacers.
+const SidebarHeader = ({ title, color }: { title: string; color: string }) => (
+  <h2
+    data-rb="header"
+    className="text-xs font-bold uppercase tracking-[0.15em] mb-2 mt-4 first:mt-0"
+    style={{ color }}
+  >
+    {title}
+  </h2>
+);
+
+const MainHeader = ({ title, color }: { title: string; color: string }) => (
+  <h2
+    data-rb="header"
+    className="text-base font-bold uppercase tracking-wide border-b-2 pb-1 mb-2"
+    style={{ color, borderColor: color }}
+  >
+    {title}
+  </h2>
+);
+
 export function SidebarTemplate({
   resumeData,
   isEditing,
@@ -29,6 +51,7 @@ export function SidebarTemplate({
   showIcons = true,
   showPhoto,
   customMargins,
+  isPrint,
 }: TemplateProps & {
   accentColor?: string;
   fontFamily?: string;
@@ -36,6 +59,7 @@ export function SidebarTemplate({
   showIcons?: boolean;
   showPhoto?: boolean;
   customMargins?: { top: number; bottom: number; left: number; right: number };
+  isPrint?: boolean;
 }) {
   const sidebarBg = useMemo(() => lightenColor(accentColor, 92), [accentColor]);
 
@@ -56,26 +80,6 @@ export function SidebarTemplate({
   const sidebarOrder = sectionOrder.filter((s) => SIDEBAR_SECTIONS.includes(s));
   const mainOrder = sectionOrder.filter((s) => !SIDEBAR_SECTIONS.includes(s));
 
-  const SidebarHeader = ({ title }: { title: string }) => (
-    <h2
-      data-rb="header"
-      className="text-xs font-bold uppercase tracking-[0.15em] mb-2 mt-4 first:mt-0"
-      style={{ color: accentColor }}
-    >
-      {title}
-    </h2>
-  );
-
-  const MainHeader = ({ title }: { title: string }) => (
-    <h2
-      data-rb="header"
-      className="text-base font-bold uppercase tracking-wide border-b-2 pb-1 mb-2"
-      style={{ color: accentColor, borderColor: accentColor }}
-    >
-      {title}
-    </h2>
-  );
-
   const contact = resumeData.personalDetails;
 
   return (
@@ -83,15 +87,16 @@ export function SidebarTemplate({
       {/* Print-only fixed background to guarantee the sidebar color spans all pages without flex layout bugs */}
       <div className="hidden print:block fixed inset-y-0 left-0 w-[34%] -z-10" style={{ backgroundColor: sidebarBg }} />
       
-      {/* Sidebar — negative vertical margins bleed the accent column past the
-          page's top/bottom margin so it fills to the edge;
-          padding keeps the content aligned. */}
+      {/* Sidebar — in the EDITOR, negative vertical margins bleed the accent
+          column up/down into the sheet's margin band so it looks edge-to-edge;
+          in PRINT the page has zero margins (the fixed background above covers
+          the full page), so no bleed — it would clip the top padding instead. */}
       <div
         className="w-[34%]"
         style={{
           backgroundColor: sidebarBg,
-          marginTop: customMargins ? `-${customMargins.top}px` : '-36px',
-          marginBottom: customMargins ? `-${customMargins.bottom}px` : '-36px',
+          marginTop: isPrint ? undefined : customMargins ? `-${customMargins.top}px` : '-36px',
+          marginBottom: isPrint ? undefined : customMargins ? `-${customMargins.bottom}px` : '-36px',
           paddingTop: customMargins ? `${customMargins.top}px` : '36px',
           paddingBottom: customMargins ? `${customMargins.bottom}px` : '36px',
           paddingLeft: customMargins ? `${customMargins.left}px` : '1.25rem',
@@ -126,7 +131,7 @@ export function SidebarTemplate({
           </div>
         )}
 
-        <SidebarHeader title="Contact" />
+        <SidebarHeader color={accentColor} title="Contact" />
         <div className="space-y-1.5 text-xs text-gray-700">
           {(isEditing || contact.email) && (
             <div className="flex items-start gap-1.5">
@@ -200,7 +205,7 @@ export function SidebarTemplate({
           <EditableSection key={section} id={section} className="mt-4 empty:hidden">
             {section === 'skills' && (isEditing || hasContent(resumeData.skills)) && (
               <div>
-                <SidebarHeader title="Skills" />
+                <SidebarHeader color={accentColor} title="Skills" />
                 <div className="space-y-1.5 text-xs">
                   {resumeData.skills.map((skill, index) => (
                     <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
@@ -240,7 +245,7 @@ export function SidebarTemplate({
 
             {section === 'languages' && (isEditing || hasContent(resumeData.languages)) && (
               <div>
-                <SidebarHeader title="Languages" />
+                <SidebarHeader color={accentColor} title="Languages" />
                 <div className="space-y-1 text-xs">
                   {resumeData.languages.map((language, index) => (
                     <div key={index} className="relative group/entry flex justify-between break-inside-avoid" data-rbkey={`e:languages:${index}`}><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
@@ -266,7 +271,7 @@ export function SidebarTemplate({
 
             {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
               <div>
-                <SidebarHeader title="Certifications" />
+                <SidebarHeader color={accentColor} title="Certifications" />
                 <div className="space-y-1.5 text-xs">
                   {resumeData.certifications.map((cert, index) => (
                     <div key={index} className="relative group/entry break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
@@ -310,23 +315,11 @@ export function SidebarTemplate({
           paddingRight: customMargins ? `${customMargins.right}px` : '1.5rem',
         }}
       >
-        <table className="w-full border-collapse">
-          <thead className="print:table-header-group hidden">
-            <tr>
-              <th 
-                className="p-0 border-0" 
-                style={{ height: customMargins ? `${customMargins.top}px` : '36px' }}
-              ></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="p-0 border-0">
         {mainOrder.map((section) => (
           <EditableSection key={section} id={section} className="mb-4 empty:hidden">
             {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (
               <div>
-                <MainHeader title="Profile" />
+                <MainHeader color={accentColor} title="Profile" />
                 <div className="text-justify text-gray-700">
                   {renderInput({
                     value: resumeData.objective,
@@ -340,7 +333,7 @@ export function SidebarTemplate({
 
             {section === 'workExperience' && (isEditing || hasContent(resumeData.workExperience)) && (
               <div>
-                <MainHeader title="Experience" />
+                <MainHeader color={accentColor} title="Experience" />
                 {resumeData.workExperience.map((exp, index) => (
                   <div key={index} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:workExperience:${index}`}><EntryChrome section="workExperience" index={index} count={resumeData.workExperience.length} />
                     <div className="break-inside-avoid" data-rb="entry-header">
@@ -403,7 +396,7 @@ export function SidebarTemplate({
 
             {section === 'projects' && (isEditing || hasContent(resumeData.projects)) && (
               <div>
-                <MainHeader title="Projects" />
+                <MainHeader color={accentColor} title="Projects" />
                 {resumeData.projects.map((project, index) => (
                   <div key={index} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
                     <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
@@ -440,7 +433,7 @@ export function SidebarTemplate({
 
             {section === 'education' && (isEditing || hasContent(resumeData.education)) && (
               <div>
-                <MainHeader title="Education" />
+                <MainHeader color={accentColor} title="Education" />
                 {resumeData.education.map((edu, index) => (
                   <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
                     <div className="break-inside-avoid" data-rb="entry-header">
@@ -517,7 +510,7 @@ export function SidebarTemplate({
                 {resumeData.customSections.map((custom, idx) => (
                   <div key={idx} className="relative group/entry mb-3 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
                     <div className="break-inside-avoid" data-rb="entry-header">
-                      <MainHeader title={custom.sectionTitle} />
+                      <MainHeader color={accentColor} title={custom.sectionTitle} />
                     </div>
                     <div className="text-gray-700">
                       {renderInput({
@@ -533,13 +526,6 @@ export function SidebarTemplate({
             )}
           </EditableSection>
         ))}
-              </td>
-            </tr>
-          </tbody>
-          <tfoot className="print:table-footer-group hidden">
-            <tr><td className="h-[36px] p-0 border-0"></td></tr>
-          </tfoot>
-        </table>
       </div>
     </div>
   );

@@ -52,19 +52,11 @@ const DownloadContent = () => {
     };
   }, [margins, customMargins]);
 
-  // Puppeteer's page.pdf() margin option already reserves top/bottom space on
-  // EVERY physical page. If the template also applies its own top/bottom CSS
-  // padding, that only lands once at the very start/end of the continuous DOM
-  // flow (native page breaks don't repeat element padding) — page 1 ends up
-  // double-margined while interior pages get none. Sidebar prints edge-to-edge
-  // (0 print margin) so it must keep managing its own top/bottom padding.
-  const templateMargins = useMemo(
-    () =>
-      selectedTemplate === 'sidebar'
-        ? resolvedMargins
-        : { ...resolvedMargins, top: 0, bottom: 0 },
-    [resolvedMargins, selectedTemplate]
-  );
+  // Templates render their own margins as padding — identical to the editor
+  // canvas — and the PDF prints with ZERO Puppeteer margins. Page breaks are
+  // then produced by the same push-mode margin spacers the editor uses, so the
+  // exported pages are the editor pages by construction.
+  const templateMargins = resolvedMargins;
 
   useEffect(() => {
     const toBool = (v: unknown) => v === true || v === 'true';
@@ -141,14 +133,21 @@ const DownloadContent = () => {
 
       const content = document.getElementById('resume-content');
       if (content) {
+        // Mirror the editor's geometry exactly: the template renders its own
+        // top padding (so the first block starts at the same offset as the
+        // editor canvas), pages hold `pageH - margins` of content, and the gap
+        // between pages is the two margins meeting at the sheet boundary. The
+        // PDF prints with ZERO margins, so page k spans [k·pageH, (k+1)·pageH)
+        // and the filler spacers land every block on the same page as the
+        // editor shows — by construction, not by trusting Chrome's paginator.
         const pageH = pageFormat === 'letter' ? 1056 : 1123;
-        // Sidebar prints edge-to-edge (0 print margin); others reserve top+bottom.
-        const contentPerPage =
-          selectedTemplate === 'sidebar'
-            ? pageH
-            : pageH - resolvedMargins.top - resolvedMargins.bottom;
+        const marginY = resolvedMargins.top + resolvedMargins.bottom;
         applyManualBreaks(content, pageBreaks);
-        paginate(content, { contentPerPage, gap: 0, mode: 'break' });
+        paginate(content, {
+          contentPerPage: pageH - marginY,
+          gap: marginY,
+          mode: 'filler',
+        });
       }
       win.__PAGINATED__ = true;
     };
@@ -175,14 +174,18 @@ const DownloadContent = () => {
       {/* Load the identical font set the editor uses so the export matches 1:1. */}
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={RESUME_FONTS_HREF} />
+      {/* Pagination is fully controlled by the filler spacers: zero @page
+          margins and no native break opinions — Chrome must never move a
+          block on its own or it diverges from the editor. */}
       <style dangerouslySetInnerHTML={{ __html: `
+        html, body { margin: 0; padding: 0; }
         @media print {
-          @page {
-            size: auto;
-            margin-top: ${selectedTemplate === 'sidebar' ? 0 : resolvedMargins.top}px;
-            margin-bottom: ${selectedTemplate === 'sidebar' ? 0 : resolvedMargins.bottom}px;
-            margin-left: 0px;
-            margin-right: 0px;
+          @page { size: auto; margin: 0; }
+          #resume-content .break-inside-avoid,
+          #resume-content [data-rb="header"],
+          #resume-content [data-rb="entry-header"] {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
         }
       `}} />

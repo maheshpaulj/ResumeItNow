@@ -7,6 +7,16 @@ import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe, Landmark }
 import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 import { lightenColor } from '@/lib/utils';
 
+// Module scope on purpose: defining this inside the template makes React see a
+// new component type every render and REMOUNT each header — wiping the inline
+// margin spacers the paginator puts on them.
+const SectionHeader = ({ title, color }: { title: string; color: string }) => (
+  <div data-rb="header" className="flex items-center gap-2 text-nowrap text-lg font-semibold mb-3 pb-1">
+    <h2 style={{ color }}>{title}</h2>
+    <div className="flex-1 h-1 mt-1" style={{ backgroundColor: color }}></div>
+  </div>
+);
+
 export function ModernTemplate({
   resumeData,
   isEditing,
@@ -45,13 +55,6 @@ export function ModernTemplate({
 
   const renderInput = useRenderInput(isEditing);
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div data-rb="header" className="flex items-center gap-2 text-nowrap text-lg font-semibold mb-3 pb-1">
-      <h2 style={{ color: colors.sectionTitle }}>{title}</h2>
-      <div className="flex-1 h-1 mt-1" style={{ backgroundColor: colors.sectionTitle }}></div>
-    </div>
-  );
-
   const hasContent = (section: unknown): boolean => {
     if (!section) return false;
     if (Array.isArray(section)) return section.length > 0;
@@ -65,11 +68,11 @@ export function ModernTemplate({
 
   return (
     <div 
-      className="w-full mx-auto bg-white" 
+      className="w-full mx-auto bg-white text-gray-900" 
       style={{ 
         fontFamily,
-        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
-        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
+        paddingTop: customMargins ? `${customMargins.top}px` : '1.5rem',
+        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1.5rem',
         paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
         paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
@@ -193,7 +196,7 @@ export function ModernTemplate({
         <EditableSection key={section} id={section} className="mb-6 empty:hidden">
           {section === 'objective' && (isEditing || hasContent(resumeData.objective)) && (
             <div>
-              <SectionHeader title="Professional Summary" />
+              <SectionHeader color={colors.sectionTitle} title="Professional Summary" />
               {renderInput({
                 value: resumeData.objective,
                 onChange: (value) => updateField('objective', null, 'objective', value),
@@ -207,7 +210,7 @@ export function ModernTemplate({
 
           {section === 'workExperience' && (isEditing || hasContent(resumeData.workExperience)) && (
             <div className="flex-1">
-              <SectionHeader title="Work Experience" />
+              <SectionHeader color={colors.sectionTitle} title="Work Experience" />
               {resumeData.workExperience.map((experience, index) => (
                 <div
                   key={index}
@@ -300,7 +303,7 @@ export function ModernTemplate({
 
           {section === 'projects' && (isEditing || hasContent(resumeData.projects)) && (
             <div>
-              <SectionHeader title="Projects" />
+              <SectionHeader color={colors.sectionTitle} title="Projects" />
               {resumeData.projects.map((project, index) => (
                 <div
                   key={index}
@@ -347,7 +350,7 @@ export function ModernTemplate({
 
           {section === 'education' && (isEditing || hasContent(resumeData.education)) && (
             <div>
-              <SectionHeader title="Education" />
+              <SectionHeader color={colors.sectionTitle} title="Education" />
               {resumeData.education.map((edu, index) => (
                 <div key={index} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
                   <div className="break-inside-avoid" data-rb="entry-header">
@@ -433,7 +436,7 @@ export function ModernTemplate({
 
           {section === 'skills' && (isEditing || hasContent(resumeData.skills)) && (
             <div>
-              <SectionHeader title="Skills" />
+              <SectionHeader color={colors.sectionTitle} title="Skills" />
               <div className="space-y-2">
                 {resumeData.skills.map((skill, index) => (
                   <div key={index} className="relative group/entry flex items-start break-inside-avoid" data-rbkey={`e:skills:${index}`}><EntryChrome section="skills" index={index} count={resumeData.skills.length} />
@@ -479,7 +482,7 @@ export function ModernTemplate({
 
           {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
             <div>
-              <SectionHeader title="Certifications" />
+              <SectionHeader color={colors.sectionTitle} title="Certifications" />
               {resumeData.certifications.map((cert, index) => (
                 <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
                   <div className="flex justify-between items-start">
@@ -518,7 +521,7 @@ export function ModernTemplate({
 
           {section === 'languages' && (isEditing || hasContent(resumeData.languages)) && (
             <div>
-              <SectionHeader title="Languages" />
+              <SectionHeader color={colors.sectionTitle} title="Languages" />
               <div className="flex flex-col">
                 {resumeData.languages.map((language, index) => (
                   <div key={index} className="relative group/entry text-sm flex items-center gap-2 p-1 text-nowrap rounded-md break-inside-avoid" data-rbkey={`e:languages:${index}`}><EntryChrome section="languages" index={index} count={resumeData.languages.length} />
@@ -547,7 +550,7 @@ export function ModernTemplate({
               {resumeData.customSections.map((custom, idx) => (
                 <div key={idx} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
                   <div className="break-inside-avoid" data-rb="entry-header">
-                    <SectionHeader title={custom.sectionTitle} />
+                    <SectionHeader color={colors.sectionTitle} title={custom.sectionTitle} />
                   </div>
                   {renderInput({
                     value: custom.content,

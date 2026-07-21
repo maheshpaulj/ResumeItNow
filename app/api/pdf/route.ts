@@ -81,7 +81,11 @@ async function renderPdf(payload: PdfPayload) {
             .catch(() => { /* fall back to native pagination if it never flags */ });
 
         const pdf = await page.pdf({
-            format: pageFormat,
+            // Explicit CSS-pixel size (not `format`) so each PDF page is exactly
+            // the editor's page height — `format: "a4"` is 1122.5px, and the
+            // half-pixel-per-page drift shifts every spacer-computed boundary.
+            width: `${width}px`,
+            height: `${height}px`,
             printBackground: true,
             margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
         });

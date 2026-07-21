@@ -135,30 +135,33 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    // Compact by default on desktop; hovering anywhere on the bar expands it.
+    // Mobile has no hover, so it keeps the full height there.
+    <nav className="group sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between transition-[height] duration-300 ease-out md:h-9 md:group-hover:h-16 md:group-focus-within:h-16">
           <div className="flex items-center gap-8">
             <Link
               href="/"
-              className="flex items-center space-x-2 font-bold text-2xl hover:opacity-90 transition-opacity"
+              className="flex items-center space-x-2 font-bold transition-all duration-300 hover:opacity-90 text-2xl md:text-base md:group-hover:text-2xl md:group-focus-within:text-2xl"
             >
               ResumeItNow
             </Link>
           </div>
-          <div className="hidden md:flex md:gap-2">
+          <div className="hidden md:flex md:gap-2 origin-center transition-transform duration-300 md:scale-90 md:group-hover:scale-100 md:group-focus-within:scale-100">
               {navLinks.map((link) => (
                 <Button
                   key={link.href}
                   variant="ghost"
                   size="sm"
+                  className="md:h-7 md:group-hover:h-9 md:group-focus-within:h-9 transition-[height] duration-300"
                   onClick={() => navigateTo(link.href)}
                 >
                   {link.title}
                 </Button>
               ))}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 origin-right transition-transform duration-300 md:scale-90 md:group-hover:scale-100 md:group-focus-within:scale-100">
             <div className="hidden md:flex md:items-center md:gap-4">
               {session ? (
                 <UserMenu />
@@ -166,6 +169,7 @@ export default function Navbar() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="md:h-7 md:group-hover:h-9 md:group-focus-within:h-9 transition-[height] duration-300"
                   onClick={() => navigateTo('/signin')}
                 >
                   Sign In

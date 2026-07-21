@@ -76,6 +76,7 @@ export interface PersonalDetails {
     editorMode?: 'visual' | 'latex';
     latexContent?: string;
     margins?: 'normal' | 'narrow';
+    customMargins?: { top: number; bottom: number; left: number; right: number };
     template?: string;
   }
 

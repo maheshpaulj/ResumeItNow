@@ -6,6 +6,17 @@ import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome'
 import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
 import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 
+// Module scope on purpose: an inline definition makes React remount headers
+// every render, wiping the paginator's margin spacers.
+const SectionHeader = ({ title }: { title: string }) => (
+  <div
+    data-rb="header"
+    className="text-lg text-black font-semibold mb-2 pb-1 border-b-2 border-gray-800 break-inside-avoid"
+  >
+    <h2>{title}</h2>
+  </div>
+);
+
 export function MinimalTemplate({
   resumeData,
   isEditing,
@@ -43,15 +54,6 @@ export function MinimalTemplate({
 
   const renderInput = useRenderInput(isEditing);
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div
-      data-rb="header"
-      className="text-lg text-black font-semibold mb-2 pb-1 border-b-2 border-gray-800 break-inside-avoid"
-    >
-      <h2>{title}</h2>
-    </div>
-  );
-
   const hasContent = (section: unknown): boolean => {
     if (!section) return false;
     if (Array.isArray(section)) return section.length > 0;
@@ -65,11 +67,11 @@ export function MinimalTemplate({
 
   return (
     <div 
-      className="w-full mx-auto bg-white" 
+      className="w-full mx-auto bg-white text-gray-900" 
       style={{ 
         fontFamily,
-        paddingTop: isPrint ? '0px' : (customMargins ? `${customMargins.top}px` : '1.5rem'),
-        paddingBottom: isPrint ? '0px' : (customMargins ? `${customMargins.bottom}px` : '1.5rem'),
+        paddingTop: customMargins ? `${customMargins.top}px` : '1.5rem',
+        paddingBottom: customMargins ? `${customMargins.bottom}px` : '1.5rem',
         paddingLeft: customMargins ? `${customMargins.left}px` : '2rem',
         paddingRight: customMargins ? `${customMargins.right}px` : '2rem',
       }}
