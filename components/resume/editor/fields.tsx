@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import { Bold, List, Loader2, RotateCcw, Sparkles, Camera, X, Calendar } from 'lucide-react';
+import { Bold, Italic, List, Loader2, RotateCcw, Sparkles, Camera, X, Calendar } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,7 +24,9 @@ export function markdownToLines(md: string): string[] {
     .split('\n')
     .map((line) => {
       let l = escapeHtml(line);
+      // bold before italic so ** isn't matched as two single-* italics
       l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      l = l.replace(/\*([^*]+)\*/g, '<em>$1</em>');
       if (/^\s*-\s/.test(line)) {
         l = `• ${l.replace(/^\s*-\s/, '')}`;
       }
@@ -39,7 +41,9 @@ export function markdownToHtml(md: string): string {
     .split('\n')
     .map((line) => {
       let l = escapeHtml(line);
+      // bold before italic so ** isn't matched as two single-* italics
       l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      l = l.replace(/\*([^*]+)\*/g, '<em>$1</em>');
       if (/^\s*-\s/.test(line)) {
         l = `• ${l.replace(/^\s*-\s/, '')}`;
       }
@@ -55,13 +59,14 @@ function mdToEditableHtml(md: string): string {
     .map((line) => {
       let l = escapeHtml(line);
       l = l.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      l = l.replace(/\*([^*]+)\*/g, '<i>$1</i>');
       if (/^\s*-\s/.test(line)) l = '• ' + l.replace(/^\s*-\s/, '');
       return `<div>${l || '<br>'}</div>`;
     })
     .join('');
 }
 
-/** Editable HTML → markdown (b/strong → **, block elements → newlines, • → "- "). */
+/** Editable HTML → markdown (b/strong → **, i/em → *, block elements → newlines, • → "- "). */
 function editableHtmlToMd(el: HTMLElement): string {
   const walk = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
@@ -71,6 +76,9 @@ function editableHtmlToMd(el: HTMLElement): string {
       case 'B':
       case 'STRONG':
         return inner ? `**${inner}**` : '';
+      case 'I':
+      case 'EM':
+        return inner ? `*${inner}*` : '';
       case 'BR':
         return '';
       case 'DIV':
@@ -434,8 +442,9 @@ interface RichTextProps {
 }
 
 /**
- * Multiline WYSIWYG editor for descriptions. Bold renders live, "- " lines render
- * as bullets, and a floating toolbar (bold / bullet / AI enhance / undo) appears on focus.
+ * Multiline WYSIWYG editor for descriptions. Bold/italic render live, "- " lines
+ * render as bullets, and a floating toolbar (bold / italic / bullet / AI enhance /
+ * undo) appears on focus.
  */
 export function RichText({
   value,
@@ -532,7 +541,11 @@ export function RichText({
             {toolbarButton(<Bold className="h-3.5 w-3.5" />, () => {
               document.execCommand('bold');
               commit();
-            }, 'Bold')}
+            }, 'Bold (Ctrl+B)')}
+            {toolbarButton(<Italic className="h-3.5 w-3.5" />, () => {
+              document.execCommand('italic');
+              commit();
+            }, 'Italic (Ctrl+I)')}
             {toolbarButton(<List className="h-3.5 w-3.5" />, () => {
               document.execCommand('insertText', false, '• ');
               commit();
