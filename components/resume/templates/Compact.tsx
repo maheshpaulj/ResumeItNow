@@ -239,15 +239,27 @@ export function CompactTemplate({
               {resumeData.projects.map((project, index) => (
                 <div key={index} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:projects:${index}`}><EntryChrome section="projects" index={index} count={resumeData.projects.length} />
                   <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
-                    <span className="font-semibold">
-                      {renderInput({
-                        value: project.projectName,
-                        onChange: (v) => updateField('projects', index, 'projectName', v),
-                        ariaLabel: 'Project name',
-                      })}
-                    </span>
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="font-bold" style={{ color: accentColor }}>
+                        {renderInput({
+                          value: project.projectName,
+                          onChange: (v) => updateField('projects', index, 'projectName', v),
+                          ariaLabel: 'Project name',
+                        })}
+                      </span>
+                      {(isEditing || (project as unknown as Record<string, string>).techStack) && (
+                        <span className="text-xs text-gray-500 truncate">
+                          {'| '}
+                          {renderInput({
+                            value: (project as unknown as Record<string, string>).techStack || '',
+                            onChange: (v) => updateField('projects', index, 'techStack', v),
+                            ariaLabel: 'Tech stack',
+                          })}
+                        </span>
+                      )}
+                    </div>
                     {(isEditing || project.link) && (
-                      <span className="text-xs ml-2" style={{ color: accentColor }}>
+                      <span className="text-xs ml-2 shrink-0" style={{ color: accentColor }}>
                         {renderInput({
                           value: project.link,
                           onChange: (v) => updateField('projects', index, 'link', v),
@@ -257,7 +269,7 @@ export function CompactTemplate({
                       </span>
                     )}
                   </div>
-                  <div className="text-gray-700">
+                  <div className="text-gray-600 text-[12.5px]">
                     {renderInput({
                       value: project.description,
                       onChange: (v) => updateField('projects', index, 'description', v),
@@ -275,7 +287,7 @@ export function CompactTemplate({
               <SectionHeader color={accentColor} title="Education" />
               {resumeData.education.map((edu, index) => (
                 <div key={index} className="relative group/entry mb-1.5 last:mb-0" data-rb="entry" data-rbkey={`e:education:${index}`}><EntryChrome section="education" index={index} count={resumeData.education.length} />
-                  <div className="break-inside-avoid flex justify-between items-baseline" data-rb="entry-header">
+                  <div className="break-inside-avoid flex justify-between items-start" data-rb="entry-header">
                     <div>
                       <span className="font-semibold">
                         {renderInput({
@@ -304,33 +316,35 @@ export function CompactTemplate({
                         )}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap ml-2">
-                      {renderInput({
-                        value: edu.startDate,
-                        onChange: (v) => updateField('education', index, 'startDate', v),
-                        type: 'date',
-                        ariaLabel: 'Start date',
-                      })}
-                      {((isEditing && (edu.startDate || edu.endDate)) || (edu.startDate && edu.endDate)) && <span>–</span>}
-                      {renderInput({
-                        value: edu.endDate,
-                        onChange: (v) => updateField('education', index, 'endDate', v),
-                        type: 'date',
-                        allowPresent: true,
-                        ariaLabel: 'End date',
-                      })}
+                    <div className="text-xs text-gray-500 whitespace-nowrap ml-2 text-right shrink-0">
+                      <div className="flex items-center gap-1">
+                        {renderInput({
+                          value: edu.startDate,
+                          onChange: (v) => updateField('education', index, 'startDate', v),
+                          type: 'date',
+                          ariaLabel: 'Start date',
+                        })}
+                        {((isEditing && (edu.startDate || edu.endDate)) || (edu.startDate && edu.endDate)) && <span>–</span>}
+                        {renderInput({
+                          value: edu.endDate,
+                          onChange: (v) => updateField('education', index, 'endDate', v),
+                          type: 'date',
+                          allowPresent: true,
+                          ariaLabel: 'End date',
+                        })}
+                      </div>
+                      {(isEditing || edu.gpa) && (
+                        <div className="text-gray-500">
+                          GPA:{' '}
+                          {renderInput({
+                            value: edu.gpa || '',
+                            onChange: (v) => updateField('education', index, 'gpa', v),
+                            ariaLabel: 'GPA',
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {(isEditing || edu.gpa) && (
-                    <div className="text-gray-600 text-xs">
-                      GPA:{' '}
-                      {renderInput({
-                        value: edu.gpa || '',
-                        onChange: (v) => updateField('education', index, 'gpa', v),
-                        ariaLabel: 'GPA',
-                      })}
-                    </div>
-                  )}
                   {(isEditing || edu.description) && (
                     <div className="text-gray-700 text-xs">
                       {renderInput({

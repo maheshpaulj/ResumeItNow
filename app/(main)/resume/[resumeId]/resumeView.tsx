@@ -26,6 +26,8 @@ import {
   Play,
   AlertTriangle,
   RefreshCw,
+  Wand2,
+  Undo2,
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -310,6 +312,15 @@ export default function ResumeView({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstRender = useRef(true);
   const { data: session } = useSession();
+
+  /* ────────────────── AI Auto-Fit state ────────────────── */
+  const [isAutoFitting, setIsAutoFitting] = useState(false);
+  const [autoFitProgress, setAutoFitProgress] = useState(0);
+  const [autoFitSnapshot, setAutoFitSnapshot] = useState<{
+    template: TemplateKey;
+    margins: 'normal' | 'narrow' | 'custom';
+    hiddenSections: string[];
+  } | null>(null);
  
   // LaTeX Editor Toolbar Sync States & Refs
   const [latexAutoCompile, setLatexAutoCompile] = useState(true);
@@ -616,6 +627,97 @@ export default function ResumeView({
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   }, []);
+
+  /* ────────────────── AI Auto-Fit handler ────────────────── */
+  const handleAutoFit = useCallback(async () => {
+    if (isAutoFitting) return;
+    setIsAutoFitting(true);
+    setAutoFitProgress(5);
+
+    // Save snapshot for undo
+    setAutoFitSnapshot({
+      template: selectedTemplate,
+      margins,
+      hiddenSections: [...hiddenSections],
+    });
+
+    // Simulated progress animation
+    const progressInterval = setInterval(() => {
+      setAutoFitProgress((p) => {
+        if (p < 40) return p + Math.random() * 8;
+        if (p < 75) return p + Math.random() * 4;
+        if (p < 92) return p + Math.random() * 1.5;
+        return Math.min(p + 0.3, 96);
+      });
+    }, 300);
+
+    try {
+      const res = await fetch('/api/auto-fit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeData,
+          currentTemplate: selectedTemplate,
+          currentMargins: margins,
+          pageCount: pageStarts.length,
+        }),
+      });
+
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Auto-fit failed');
+      }
+
+      const { result } = await res.json();
+
+      // Apply result
+      setAutoFitProgress(100);
+      await new Promise((r) => setTimeout(r, 300));
+
+      if (result.template && result.template in TEMPLATES) {
+        setSelectedTemplate(result.template as TemplateKey);
+      }
+      if (result.margins) {
+        setMargins(result.margins);
+      }
+      if (Array.isArray(result.hideSections)) {
+        setHiddenSections(result.hideSections);
+      }
+
+      toast({
+        title: 'Auto-fit applied ✨',
+        description: `Switched to ${TEMPLATE_LABELS[result.template as TemplateKey] || result.template} template with ${result.margins} margins.`,
+        duration: 4000,
+      });
+    } catch (error) {
+      clearInterval(progressInterval);
+      toast({
+        title: 'Auto-fit failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+      setAutoFitSnapshot(null);
+    } finally {
+      setIsAutoFitting(false);
+      setAutoFitProgress(0);
+    }
+  }, [isAutoFitting, resumeData, selectedTemplate, margins, hiddenSections, pageStarts.length]);
+
+  const handleUndoAutoFit = useCallback(() => {
+    if (!autoFitSnapshot) return;
+    setSelectedTemplate(autoFitSnapshot.template);
+    setMargins(autoFitSnapshot.margins);
+    setHiddenSections(autoFitSnapshot.hiddenSections);
+    setAutoFitSnapshot(null);
+    toast({
+      title: 'Auto-fit reverted',
+      description: 'Your previous layout has been restored.',
+      duration: 2500,
+    });
+  }, [autoFitSnapshot]);
 
   const editorApi = useMemo(
     () => ({
@@ -947,6 +1049,45 @@ export default function ResumeView({
               <Layers className="h-4 w-4" />
               <span className="hidden sm:inline">Sections</span>
             </Button>
+
+            {/* ── AI Auto-Fit Button ── */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                onClick={handleAutoFit}
+                disabled={isAutoFitting}
+                className="h-9 gap-2 relative overflow-hidden border-violet-300 dark:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950 transition-all"
+                title="AI-powered: automatically picks the best template & settings to fit your resume on one page"
+              >
+                {isAutoFitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+                    <span className="hidden sm:inline text-violet-600 dark:text-violet-400">Fitting…</span>
+                    {/* progress bar overlay */}
+                    <span
+                      className="absolute bottom-0 left-0 h-0.5 bg-violet-500 transition-all duration-300 ease-out"
+                      style={{ width: `${autoFitProgress}%` }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-4 w-4 text-violet-500" />
+                    <span className="hidden sm:inline">Fit to 1 Page</span>
+                  </>
+                )}
+              </Button>
+              {autoFitSnapshot && !isAutoFitting && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndoAutoFit}
+                  className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                  title="Undo auto-fit"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
 
             <div className="flex items-center rounded-md border h-9">
               <Button
