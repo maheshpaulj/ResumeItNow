@@ -850,7 +850,7 @@ export default function ResumeView({
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={RESUME_FONTS_HREF} />
       {/* Toolbar */}
-      <Card className={`w-full print:hidden z-40 ${editorMode === 'latex' ? 'rounded-none border-t-0 border-x-0 border-b border-border bg-card text-card-foreground mb-6' : 'mb-6 max-w-5xl sticky top-[4.5rem] backdrop-blur supports-[backdrop-filter]:bg-card/95'}`}>
+      <Card className={`w-full print:hidden z-40 ${editorMode === 'latex' ? 'rounded-none border-t-0 border-x-0 border-b border-border bg-card text-card-foreground mb-6' : 'mb-6 max-w-5xl sticky top-[calc(var(--app-nav-height,4rem)+0.5rem)] transition-[top] duration-300 backdrop-blur supports-[backdrop-filter]:bg-card/95'}`}>
         <CardContent className="p-2.5 sm:p-3">
           <div className="flex flex-wrap items-center gap-2">
             {editorMode === 'visual' && (
