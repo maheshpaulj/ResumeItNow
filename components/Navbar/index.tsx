@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -48,6 +48,7 @@ export default function Navbar() {
   const [navHovered, setNavHovered] = useState(false);
   const [navFocused, setNavFocused] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   const [settings, setSettings] = useState<Settings>({
     displayName: '',
     defaultTemplate: 'modern'
@@ -80,6 +81,19 @@ export default function Navbar() {
       document.documentElement.style.removeProperty('--app-nav-height');
     };
   }, [expanded]);
+
+  // Radix returns focus to the account trigger when a menu closes. That is
+  // useful for accessibility, but should not leave the navigation expanded
+  // after the visitor has clicked back into the page.
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!navRef.current?.contains(event.target as Node)) {
+        setNavFocused(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, []);
 
   if (!mounted) return null;
 
@@ -164,6 +178,7 @@ export default function Navbar() {
     // Compact by default on desktop; hovering anywhere on the bar expands it.
     // Mobile has no hover, so it keeps the full height there.
     <nav
+      ref={navRef}
       className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
       onMouseEnter={() => setNavHovered(true)}
       onMouseLeave={() => setNavHovered(false)}
