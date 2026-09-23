@@ -33,7 +33,7 @@ export const ENTRY_DEFAULTS: Record<ArraySection, object> = {
   skills: { skillType: 'group', category: '', skills: '', skill: '' },
   languages: { language: '', proficiency: '' },
   certifications: { certificationName: '', issuingOrganization: '', issueDate: '' },
-  customSections: { sectionTitle: '', content: '' },
+  customSections: { sectionTitle: 'Custom Section', content: '' },
 };
 
 export interface EditorApi {

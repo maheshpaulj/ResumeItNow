@@ -2,7 +2,8 @@
 import type { TemplateProps } from './types';
 import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
 import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
-import { Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { useEditor } from '@/components/resume/editor/context';
+import { Mail, Phone, MapPin, Globe, Plus } from 'lucide-react';
 import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 
 const contactIcons = {
@@ -56,7 +57,7 @@ export function CompactTemplate({
   customMargins?: { top: number; bottom: number; left: number; right: number };
   isPrint?: boolean;
 }) {
-
+  const { addEntry } = useEditor();
   const renderInput = useRenderInput(isEditing);
 
   const hasContent = (section: unknown): boolean => {
@@ -467,17 +468,42 @@ export function CompactTemplate({
 
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
-              {resumeData.customSections.map((custom, idx) => (
+              {(!resumeData.customSections || resumeData.customSections.length === 0) && isEditing && (
+                <div className="p-3 border border-dashed border-gray-300 rounded-md text-center my-2 bg-gray-50/50 print:hidden">
+                  <p className="text-xs text-gray-500 mb-1.5">Custom section is empty</p>
+                  <button
+                    type="button"
+                    onClick={() => addEntry('customSections')}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add Custom Section
+                  </button>
+                </div>
+              )}
+              {resumeData.customSections?.map((custom, idx) => (
                 <div key={idx} className="relative group/entry mb-2 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <div className="break-inside-avoid" data-rb="entry-header">
-                    <SectionHeader color={accentColor} title={custom.sectionTitle} />
+                  <div
+                    data-rb="header"
+                    className="break-inside-avoid text-[13px] font-bold uppercase tracking-[0.15em] border-b pb-0.5 mb-2"
+                    style={{ color: accentColor, borderColor: accentColor }}
+                  >
+                    <h2>
+                      {renderInput({
+                        value: custom.sectionTitle,
+                        onChange: (v) => updateField('customSections', idx, 'sectionTitle', v),
+                        placeholder: 'Custom Section Title',
+                        ariaLabel: 'Custom Section Title',
+                        className: 'font-bold uppercase tracking-[0.15em]',
+                      })}
+                    </h2>
                   </div>
                   <div className="text-gray-700">
                     {renderInput({
                       value: custom.content,
                       onChange: (v) => updateField('customSections', idx, 'content', v),
                       multiline: true,
-                      ariaLabel: custom.sectionTitle,
+                      ariaLabel: `${custom.sectionTitle || 'Custom Section'} content`,
                     })}
                   </div>
                 </div>

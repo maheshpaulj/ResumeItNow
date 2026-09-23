@@ -64,8 +64,24 @@ export default function Navbar() {
 
   // The compact nav is useful while reading, but the page header should feel
   // intentional when the visitor first lands at the top of a page.
+  // Uses hysteresis (collapse at > 60px, expand at < 15px) with requestAnimationFrame
+  // to prevent rapid minimize/expand oscillation caused by sticky layout shifts.
   useEffect(() => {
-    const updateScrollState = () => setAtTop(window.scrollY < 8);
+    let ticking = false;
+    const updateScrollState = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          setAtTop((prev) => {
+            if (prev && y > 60) return false;
+            if (!prev && y < 15) return true;
+            return prev;
+          });
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });
     return () => window.removeEventListener('scroll', updateScrollState);

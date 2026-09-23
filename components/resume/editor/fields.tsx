@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import { Bold, Italic, List, Loader2, RotateCcw, Sparkles, Camera, X, Calendar } from 'lucide-react';
+import { Bold, Italic, List, Loader2, RotateCcw, Sparkles, Camera, X, Calendar, Heading1, Heading2, Heading3, Type } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,6 +27,18 @@ export function markdownToLines(md: string): string[] {
       // bold before italic so ** isn't matched as two single-* italics
       l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       l = l.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      if (/^\s*#\s+/.test(line)) {
+        const text = l.replace(/^\s*#\s+/, '');
+        return `<span class="text-base font-bold text-gray-900 block my-0.5 leading-snug">${text}</span>`;
+      }
+      if (/^\s*##\s+/.test(line)) {
+        const text = l.replace(/^\s*##\s+/, '');
+        return `<span class="text-[13.5px] font-bold text-gray-800 block my-0.5 leading-snug">${text}</span>`;
+      }
+      if (/^\s*###\s+/.test(line)) {
+        const text = l.replace(/^\s*###\s+/, '');
+        return `<span class="text-xs font-semibold text-gray-600 block my-0.5 leading-snug">${text}</span>`;
+      }
       if (/^\s*-\s/.test(line)) {
         l = `• ${l.replace(/^\s*-\s/, '')}`;
       }
@@ -34,7 +46,7 @@ export function markdownToLines(md: string): string[] {
     });
 }
 
-/** Render the app's markdown subset (bold + "- " bullets) as read-only HTML. */
+/** Render the app's markdown subset (bold + headings + "- " bullets) as read-only HTML. */
 export function markdownToHtml(md: string): string {
   if (!md) return '';
   return md
@@ -44,6 +56,15 @@ export function markdownToHtml(md: string): string {
       // bold before italic so ** isn't matched as two single-* italics
       l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       l = l.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      if (/^\s*#\s+/.test(line)) {
+        return `<span class="text-base font-bold text-gray-900 block my-0.5 leading-snug">${l.replace(/^\s*#\s+/, '')}</span>`;
+      }
+      if (/^\s*##\s+/.test(line)) {
+        return `<span class="text-[13.5px] font-bold text-gray-800 block my-0.5 leading-snug">${l.replace(/^\s*##\s+/, '')}</span>`;
+      }
+      if (/^\s*###\s+/.test(line)) {
+        return `<span class="text-xs font-semibold text-gray-600 block my-0.5 leading-snug">${l.replace(/^\s*###\s+/, '')}</span>`;
+      }
       if (/^\s*-\s/.test(line)) {
         l = `• ${l.replace(/^\s*-\s/, '')}`;
       }
@@ -60,13 +81,25 @@ function mdToEditableHtml(md: string): string {
       let l = escapeHtml(line);
       l = l.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
       l = l.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+      if (/^\s*#\s+/.test(line)) {
+        const text = l.replace(/^\s*#\s+/, '');
+        return `<div data-level="h1" class="text-base font-bold text-gray-900 my-0.5 leading-snug">${text || '<br>'}</div>`;
+      }
+      if (/^\s*##\s+/.test(line)) {
+        const text = l.replace(/^\s*##\s+/, '');
+        return `<div data-level="h2" class="text-[13.5px] font-bold text-gray-800 my-0.5 leading-snug">${text || '<br>'}</div>`;
+      }
+      if (/^\s*###\s+/.test(line)) {
+        const text = l.replace(/^\s*###\s+/, '');
+        return `<div data-level="h3" class="text-xs font-semibold text-gray-600 my-0.5 leading-snug">${text || '<br>'}</div>`;
+      }
       if (/^\s*-\s/.test(line)) l = '• ' + l.replace(/^\s*-\s/, '');
       return `<div>${l || '<br>'}</div>`;
     })
     .join('');
 }
 
-/** Editable HTML → markdown (b/strong → **, i/em → *, block elements → newlines, • → "- "). */
+/** Editable HTML → markdown (b/strong → **, i/em → *, headings, block elements → newlines, • → "- "). */
 function editableHtmlToMd(el: HTMLElement): string {
   const walk = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
@@ -79,12 +112,24 @@ function editableHtmlToMd(el: HTMLElement): string {
       case 'I':
       case 'EM':
         return inner ? `*${inner}*` : '';
+      case 'H1':
+        return `\n# ${inner.replace(/^#+\s*/, '')}`;
+      case 'H2':
+        return `\n## ${inner.replace(/^#+\s*/, '')}`;
+      case 'H3':
+        return `\n### ${inner.replace(/^#+\s*/, '')}`;
       case 'BR':
         return '';
       case 'DIV':
       case 'P':
-      case 'LI':
+      case 'LI': {
+        const level = e.getAttribute('data-level');
+        const clean = inner.replace(/^#+\s*/, '');
+        if (level === 'h1') return `\n# ${clean}`;
+        if (level === 'h2') return `\n## ${clean}`;
+        if (level === 'h3') return `\n### ${clean}`;
         return `\n${inner}`;
+      }
       default:
         return inner;
     }
@@ -505,6 +550,105 @@ export function RichText({
     setUndoValue(null);
   };
 
+  const setLineLevel = (level: 'h1' | 'h2' | 'h3' | 'normal') => {
+    if (!ref.current) return;
+    const sel = window.getSelection();
+
+    // Ensure direct text nodes inside ref.current are normalized into divs
+    const rawNodes = Array.from(ref.current.childNodes);
+    if (rawNodes.length === 0 || (rawNodes.length === 1 && rawNodes[0].nodeType === Node.TEXT_NODE)) {
+      const text = ref.current.textContent || '';
+      ref.current.innerHTML = text ? `<div>${escapeHtml(text)}</div>` : '<div><br></div>';
+    }
+
+    const targets: HTMLElement[] = [];
+
+    // 1. If selection is inside ref.current, collect selected block elements
+    if (sel && sel.rangeCount > 0 && sel.anchorNode && ref.current.contains(sel.anchorNode)) {
+      const range = sel.getRangeAt(0);
+
+      // Check if multiple direct children intersect the range
+      for (let i = 0; i < ref.current.children.length; i++) {
+        const child = ref.current.children[i];
+        if (child instanceof HTMLElement) {
+          try {
+            if (range.intersectsNode(child)) {
+              targets.push(child);
+            }
+          } catch {
+            // fallback if intersectsNode fails in some browser state
+          }
+        }
+      }
+
+      // If intersectsNode didn't catch (e.g. collapsed cursor), climb from anchorNode
+      if (targets.length === 0) {
+        let node: Node | null = sel.anchorNode;
+        while (node && node.parentElement && node.parentElement !== ref.current) {
+          node = node.parentElement;
+        }
+        if (node && node.parentElement === ref.current && node instanceof HTMLElement) {
+          targets.push(node);
+        }
+      }
+    }
+
+    // 2. Fallback: if cursor was not inside or targets is still empty, operate on the first child of ref.current
+    if (targets.length === 0) {
+      if (ref.current.children.length === 0) {
+        const div = document.createElement('div');
+        div.innerHTML = '<br>';
+        ref.current.appendChild(div);
+        targets.push(div);
+      } else {
+        const first = ref.current.firstElementChild;
+        if (first instanceof HTMLElement) {
+          targets.push(first);
+        }
+      }
+    }
+
+    // 3. STRICT SAFETY CHECK: targets MUST be direct children of ref.current, NEVER ref.current itself or ancestors!
+    const validTargets = targets.filter(
+      (el) => el && el !== ref.current && el.parentElement === ref.current
+    );
+
+    if (validTargets.length === 0) return;
+
+    for (const el of validTargets) {
+      const currentLevel = el.getAttribute('data-level');
+      const targetLevel = currentLevel === level ? 'normal' : level;
+
+      el.classList.remove(
+        'text-base',
+        'text-[13.5px]',
+        'text-xs',
+        'font-bold',
+        'font-semibold',
+        'text-gray-900',
+        'text-gray-800',
+        'text-gray-600',
+        'leading-snug',
+        'my-0.5'
+      );
+
+      if (targetLevel === 'h1') {
+        el.setAttribute('data-level', 'h1');
+        el.classList.add('text-base', 'font-bold', 'text-gray-900', 'leading-snug', 'my-0.5');
+      } else if (targetLevel === 'h2') {
+        el.setAttribute('data-level', 'h2');
+        el.classList.add('text-[13.5px]', 'font-bold', 'text-gray-800', 'leading-snug', 'my-0.5');
+      } else if (targetLevel === 'h3') {
+        el.setAttribute('data-level', 'h3');
+        el.classList.add('text-xs', 'font-semibold', 'text-gray-600', 'leading-snug', 'my-0.5');
+      } else {
+        el.removeAttribute('data-level');
+      }
+    }
+
+    commit();
+  };
+
   const toolbarButton = (
     icon: ReactNode,
     onClick: () => void,
@@ -538,6 +682,11 @@ export function RichText({
             className="absolute -top-9 left-0 z-30 flex items-center gap-0.5 rounded-lg border bg-white p-1 shadow-lg"
             contentEditable={false}
           >
+            {toolbarButton(<Heading1 className="h-3.5 w-3.5" />, () => setLineLevel('h1'), 'Large Heading (#)')}
+            {toolbarButton(<Heading2 className="h-3.5 w-3.5" />, () => setLineLevel('h2'), 'Heading (##)')}
+            {toolbarButton(<Heading3 className="h-3.5 w-3.5" />, () => setLineLevel('h3'), 'Subheading (###)')}
+            {toolbarButton(<Type className="h-3.5 w-3.5" />, () => setLineLevel('normal'), 'Normal Text')}
+            <div className="mx-0.5 h-4 w-px bg-gray-200" />
             {toolbarButton(<Bold className="h-3.5 w-3.5" />, () => {
               document.execCommand('bold');
               commit();
@@ -628,6 +777,7 @@ export interface RenderInputOptions {
   inlineStyle?: CSSProperties;
   /** for type="date": offer a "Present" option */
   allowPresent?: boolean;
+  placeholder?: string;
 }
 
 /**
@@ -647,6 +797,7 @@ export function useRenderInput(isEditing: boolean) {
       textColor = '',
       inlineStyle = {},
       allowPresent = false,
+      placeholder = '',
     }: RenderInputOptions) => {
       if (!isEditing) {
         if (type === 'date') {
@@ -717,6 +868,7 @@ export function useRenderInput(isEditing: boolean) {
             className={cn(textColor, className)}
             style={inlineStyle}
             ariaLabel={ariaLabel}
+            placeholder={placeholder || ariaLabel}
           />
         );
       }
@@ -728,6 +880,7 @@ export function useRenderInput(isEditing: boolean) {
           className={cn(textColor, className)}
           style={inlineStyle}
           ariaLabel={ariaLabel}
+          placeholder={placeholder || ariaLabel}
         />
       );
     },

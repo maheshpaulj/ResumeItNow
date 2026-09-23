@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import type { TemplateProps } from './types';
 import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
 import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
-import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe, Landmark } from 'lucide-react';
+import { useEditor } from '@/components/resume/editor/context';
+import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe, Landmark, Plus } from 'lucide-react';
 import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 import { lightenColor } from '@/lib/utils';
 
@@ -52,7 +53,7 @@ export function ModernTemplate({
     tertiary: lightenColor(accentColor, 40),
   }), [accentColor]);
 
-
+  const { addEntry } = useEditor();
   const renderInput = useRenderInput(isEditing);
 
   const hasContent = (section: unknown): boolean => {
@@ -483,39 +484,42 @@ export function ModernTemplate({
           {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
             <div>
               <SectionHeader color={colors.sectionTitle} title="Certifications" />
-              {resumeData.certifications.map((cert, index) => (
-                <div key={index} className="relative group/entry mb-3 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
-                  <div className="flex justify-between items-start">
-                    {renderInput({
-                      value: cert.certificationName,
-                      onChange: (value) => updateField('certifications', index, 'certificationName', value),
-                      className: 'font-medium text-sm',
-                      inlineStyle: { color: colors.tertiary },
-                      ariaLabel: 'Certification name',
-                    })}
-                    <div className="flex items-center gap-1">
+              <div className="space-y-1.5">
+                {resumeData.certifications.map((cert, index) => (
+                  <div key={index} className="relative group/entry flex justify-between items-baseline mb-1 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${index}`}><EntryChrome section="certifications" index={index} count={resumeData.certifications.length} />
+                    <div className="flex items-baseline gap-1.5 min-w-0 pr-2">
+                      {showIcons && <Landmark className="w-3.5 h-3.5 shrink-0 self-center" style={{ color: colors.sectionTitle }} />}
+                      <span className="font-semibold text-sm" style={{ color: colors.tertiary }}>
+                        {renderInput({
+                          value: cert.certificationName,
+                          onChange: (value) => updateField('certifications', index, 'certificationName', value),
+                          ariaLabel: 'Certification name',
+                        })}
+                      </span>
+                      {(isEditing || cert.issuingOrganization) && (
+                        <span className="text-sm" style={{ color: colors.sectionTitle }}>
+                          {' — '}
+                          {renderInput({
+                            value: cert.issuingOrganization,
+                            onChange: (value) => updateField('certifications', index, 'issuingOrganization', value),
+                            ariaLabel: 'Issuing organization',
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap shrink-0">
                       {renderInput({
                         value: cert.issueDate,
                         onChange: (value) => updateField('certifications', index, 'issueDate', value),
                         type: 'date',
-                        className: 'text-sm',
+                        className: 'text-xs',
                         inlineStyle: { color: colors.tertiary },
                         ariaLabel: 'Certification date',
                       })}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {showIcons && <Landmark className="w-4 h-4" style={{ color: colors.sectionTitle }} />}
-                    {renderInput({
-                      value: cert.issuingOrganization,
-                      onChange: (value) => updateField('certifications', index, 'issuingOrganization', value),
-                      className: 'text-sm',
-                      inlineStyle: { color: colors.sectionTitle },
-                      ariaLabel: 'Issuing organization',
-                    })}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
@@ -547,10 +551,32 @@ export function ModernTemplate({
 
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
-              {resumeData.customSections.map((custom, idx) => (
+              {(!resumeData.customSections || resumeData.customSections.length === 0) && isEditing && (
+                <div className="p-3 border border-dashed border-gray-300 rounded-md text-center my-2 bg-gray-50/50 print:hidden">
+                  <p className="text-xs text-gray-500 mb-1.5">Custom section is empty</p>
+                  <button
+                    type="button"
+                    onClick={() => addEntry('customSections')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Custom Section
+                  </button>
+                </div>
+              )}
+              {resumeData.customSections?.map((custom, idx) => (
                 <div key={idx} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <div className="break-inside-avoid" data-rb="entry-header">
-                    <SectionHeader color={colors.sectionTitle} title={custom.sectionTitle} />
+                  <div data-rb="header" className="break-inside-avoid flex items-center gap-2 text-nowrap text-lg font-semibold mb-3 pb-1">
+                    <div className="min-w-[140px]" style={{ color: colors.sectionTitle }}>
+                      {renderInput({
+                        value: custom.sectionTitle,
+                        onChange: (value) => updateField('customSections', idx, 'sectionTitle', value),
+                        placeholder: 'Custom Section Title',
+                        ariaLabel: 'Custom Section Title',
+                        className: 'font-semibold text-lg',
+                      })}
+                    </div>
+                    <div className="flex-1 h-1 mt-1" style={{ backgroundColor: colors.sectionTitle }}></div>
                   </div>
                   {renderInput({
                     value: custom.content,
@@ -558,7 +584,7 @@ export function ModernTemplate({
                     multiline: true,
                     className: 'text-sm leading-relaxed text-justify',
                     textColor: 'text-gray-700',
-                    ariaLabel: custom.sectionTitle,
+                    ariaLabel: `${custom.sectionTitle || 'Custom Section'} content`,
                   })}
                 </div>
               ))}

@@ -67,7 +67,18 @@ export function richText(md: string | undefined): string {
       out += `  \\item ${inline(bullet[1])}\n`;
     } else {
       if (inList) { out += '\\end{itemize}\n'; inList = false; }
-      out += `${inline(line)}\\par\n`;
+      const h1 = line.match(/^#\s+(.*)$/);
+      const h2 = line.match(/^##\s+(.*)$/);
+      const h3 = line.match(/^###\s+(.*)$/);
+      if (h1) {
+        out += `{\\large\\textbf{${inline(h1[1])}}}\\par\\vspace{2pt}\n`;
+      } else if (h2) {
+        out += `{\\textbf{${inline(h2[1])}}}\\par\\vspace{1pt}\n`;
+      } else if (h3) {
+        out += `{\\small\\textbf{${inline(h3[1])}}}\\par\\vspace{1pt}\n`;
+      } else {
+        out += `${inline(line)}\\par\n`;
+      }
     }
   }
   if (inList) out += '\\end{itemize}\n';

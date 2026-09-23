@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import type { TemplateProps } from './types';
 import { useRenderInput, PhotoField, SkillTypeToggle } from '@/components/resume/editor/fields';
 import { EditableSection, EntryChrome } from '@/components/resume/editor/chrome';
-import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe } from 'lucide-react';
+import { useEditor } from '@/components/resume/editor/context';
+import { Mail, Phone, MapPin, Link2, Building2, GraduationCap, Globe, Plus } from 'lucide-react';
 import { FaLinkedin, FaGithub } from 'react-icons/fa6';
 
 // Module scope on purpose: an inline definition makes React remount headers
@@ -51,7 +52,7 @@ export function MinimalTemplate({
     accent: accentColor,
   }), [accentColor]);
 
-
+  const { addEntry } = useEditor();
   const renderInput = useRenderInput(isEditing);
 
   const hasContent = (section: unknown): boolean => {
@@ -493,37 +494,39 @@ export function MinimalTemplate({
           {section === 'certifications' && (isEditing || hasContent(resumeData.certifications)) && (
             <div>
               <SectionHeader title="Certifications" />
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {resumeData.certifications.map((cert, idx) => (
-                  <div key={idx} className="relative group/entry break-inside-avoid" data-rbkey={`e:certifications:${idx}`}><EntryChrome section="certifications" index={idx} count={resumeData.certifications.length} />
-                    <div className="flex justify-between items-start">
-                      {renderInput({
-                        value: cert.certificationName,
-                        onChange: (value) =>
-                          updateField('certifications', idx, 'certificationName', value),
-                        className: 'font-bold text-sm',
-                        textColor: 'text-gray-800',
-                        ariaLabel: 'Certification name',
-                      })}
-                      <div className="flex items-center gap-1">
+                  <div key={idx} className="relative group/entry flex justify-between items-baseline mb-1 last:mb-0 break-inside-avoid" data-rbkey={`e:certifications:${idx}`}><EntryChrome section="certifications" index={idx} count={resumeData.certifications.length} />
+                    <div className="min-w-0 pr-2">
+                      <span className="font-bold text-sm text-gray-800">
                         {renderInput({
-                          value: cert.issueDate,
+                          value: cert.certificationName,
                           onChange: (value) =>
-                            updateField('certifications', idx, 'issueDate', value),
-                          className: 'text-sm',
-                          textColor: 'text-gray-600',
-                          ariaLabel: 'Certification date',
+                            updateField('certifications', idx, 'certificationName', value),
+                          ariaLabel: 'Certification name',
                         })}
-                      </div>
+                      </span>
+                      {(isEditing || cert.issuingOrganization) && (
+                        <span className="text-sm" style={{ color: colors.accent }}>
+                          {' — '}
+                          {renderInput({
+                            value: cert.issuingOrganization,
+                            onChange: (value) =>
+                              updateField('certifications', idx, 'issuingOrganization', value),
+                            ariaLabel: 'Issuing organization',
+                          })}
+                        </span>
+                      )}
                     </div>
-                    {renderInput({
-                      value: cert.issuingOrganization,
-                      onChange: (value) =>
-                        updateField('certifications', idx, 'issuingOrganization', value),
-                      className: 'text-sm',
-                      inlineStyle: { color: colors.accent }, // Direct accentColor
-                      ariaLabel: 'Issuing organization',
-                    })}
+                    <div className="text-xs text-gray-600 whitespace-nowrap shrink-0">
+                      {renderInput({
+                        value: cert.issueDate,
+                        onChange: (value) =>
+                          updateField('certifications', idx, 'issueDate', value),
+                        type: 'date',
+                        ariaLabel: 'Certification date',
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -536,14 +539,14 @@ export function MinimalTemplate({
               <div className="space-y-1">
                 {resumeData.languages.map((language, idx) => (
                   <div key={idx} className="relative group/entry break-inside-avoid text-sm flex items-center gap-2" data-rbkey={`e:languages:${idx}`}><EntryChrome section="languages" index={idx} count={resumeData.languages.length} />
-                    {renderInput({
-                      value: language.language,
-                      onChange: (value) =>
-                        updateField('languages', idx, 'language', value),
-                      className: 'font-medium',
-                      textColor: 'text-gray-800',
-                      ariaLabel: 'Language name',
-                    })}
+                    <span className="font-medium text-gray-800">
+                      {renderInput({
+                        value: language.language,
+                        onChange: (value) =>
+                          updateField('languages', idx, 'language', value),
+                        ariaLabel: 'Language name',
+                      })}
+                    </span>
                     <span className="text-gray-600">-</span>
                     {renderInput({
                       value: language.proficiency,
@@ -560,10 +563,35 @@ export function MinimalTemplate({
 
           {section === 'customSections' && (isEditing || hasContent(resumeData.customSections)) && (
             <div>
-               {resumeData.customSections.map((custom, idx) => (
+              {(!resumeData.customSections || resumeData.customSections.length === 0) && isEditing && (
+                <div className="p-3 border border-dashed border-gray-300 rounded-md text-center my-2 bg-gray-50/50 print:hidden">
+                  <p className="text-xs text-gray-500 mb-1.5">Custom section is empty</p>
+                  <button
+                    type="button"
+                    onClick={() => addEntry('customSections')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Custom Section
+                  </button>
+                </div>
+              )}
+              {resumeData.customSections?.map((custom, idx) => (
                 <div key={idx} className="relative group/entry mb-4 last:mb-0" data-rb="entry" data-rbkey={`e:customSections:${idx}`}><EntryChrome section="customSections" index={idx} count={resumeData.customSections.length} />
-                  <div className="break-inside-avoid" data-rb="entry-header">
-                    <SectionHeader title={custom.sectionTitle} />
+                  <div
+                    data-rb="header"
+                    className="text-lg text-black font-semibold mb-2 pb-1 border-b-2 border-gray-800 break-inside-avoid"
+                  >
+                    <h2>
+                      {renderInput({
+                        value: custom.sectionTitle,
+                        onChange: (value) =>
+                          updateField('customSections', idx, 'sectionTitle', value),
+                        placeholder: 'Custom Section Title',
+                        ariaLabel: 'Custom Section Title',
+                        className: 'font-semibold',
+                      })}
+                    </h2>
                   </div>
                   {renderInput({
                     value: custom.content,
@@ -572,7 +600,7 @@ export function MinimalTemplate({
                     multiline: true,
                     className: 'text-sm',
                     textColor: 'text-gray-600',
-                    ariaLabel: `${custom.sectionTitle} content`,
+                    ariaLabel: `${custom.sectionTitle || 'Custom Section'} content`,
                   })}
                 </div>
               ))}
